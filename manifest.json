@@ -1,0 +1,9 @@
+{
+  "name": "Driver Earnings Tracker",
+  "short_name": "Driver Earnings",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#123B72",
+  "icons": []
+}
