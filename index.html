@@ -130,11 +130,11 @@ function openForm(type){
 function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
  const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
- const income=price+wait+can, net=income-erp-fuel;
- const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Trip earnings',money(price)],['Waiting + cancellation',money(wait+can)],['ERP',money(erp)],['Fuel cost',money(fuel)],['Net earnings',money(net)],['CashCard top-ups',money(top)]];
+ const income=price+wait+can, net=income-erp;
+ const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Trip earnings',money(price)],['Waiting + cancellation',money(wait+can)],['ERP',money(erp)],['Fuel paid',money(fuel)],['Net earnings',money(net)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
- const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0);
- document.getElementById('performance').innerHTML=[['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel litres',fuelLit.toFixed(2)+' L'],['Fuel cost/km',dist?money(fuel/dist):money(0)]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), fuelEff=fuelLit?dist/fuelLit:0, fuelCostKm=dist?fuel/dist:0, avgFuelPrice=fuelLit?fuel/fuelLit:0;
+ document.getElementById('performance').innerHTML=[['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEff.toFixed(2)+' km/L'],['Fuel cost/km',money(fuelCostKm)],['Fuel litres',fuelLit.toFixed(2)+' L'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function renderTrips(){
  const el=document.getElementById('tripList'); if(!db.trips.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return}
@@ -154,8 +154,8 @@ function renderReports(){
  const inRange=x=>new Date(x.date+'T23:59:59')>=start;
  const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
  const dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), fees=t.reduce((a,x)=>a+x.waiting+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=f.reduce((a,x)=>a+x.paid,0), top=c.reduce((a,x)=>a+x.amount,0);
- const income=price+fees, net=income-erp-fuel;
- const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Fuel',money(fuel)],['Net earnings',money(net)],['Avg $/trip',money(t.length?price/t.length:0)],['CashCard top-ups',money(top)]];
+ const income=price+fees, net=income-erp;
+ const litres=f.reduce((a,x)=>a+x.litres,0), fuelEff=litres?dist/litres:0, fuelCostKm=dist?fuel/dist:0, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff.toFixed(2)+' km/L'],['Fuel cost/km',money(fuelCostKm)],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
