@@ -108,6 +108,7 @@ function openForm(type){
  <button class="btn">Save Trip</button><button type="button" class="btn alt" onclick="openPage('trips')">Cancel</button>`}
  if(type==='fuel'){title='Add Fuel Refill';f.innerHTML=`
  <div class="field"><label>Refill date</label><input id="date" type="date" value="${today()}"></div>
+ <div class="field"><label>Odometer reading (km)</label><input id="fuelOdo" type="number" step="0.1" min="0" required placeholder="e.g. 80000"></div>
  <div class="field"><label>Petrol amount (litres)</label><input id="litres" type="number" step="0.01" min="0" required></div>
  <div class="field"><label>Petrol price per litre ($)</label><input id="pp" type="number" step="0.001" min="0" required></div>
  <div class="field"><label>Discount (%)</label><input id="discount" type="number" step="0.01" min="0" max="100" value="0"></div>
@@ -121,9 +122,31 @@ function openForm(type){
  document.getElementById('formTitle').textContent=title;
  f.onsubmit=e=>{e.preventDefault();
  if(type==='trip')db.trips.push({id:crypto.randomUUID(),date:date.value,time:time.value,distance:+distance.value,price:+price.value,erp:+erp.value,waiting:+waiting.value,cancel:+cancel.value});
- if(type==='fuel')db.fuel.push({id:crypto.randomUUID(),date:date.value,litres:+litres.value,pp:+pp.value,discount:+discount.value,paid:+paid.value});
+ if(type==='fuel')db.fuel.push({id:crypto.randomUUID(),date:date.value,odo:+document.getElementById('fuelOdo').value, litres:+litres.value,pp:+pp.value,discount:+discount.value,paid:+paid.value});
  if(type==='cashcard')db.cashcard.push({id:crypto.randomUUID(),date:date.value,amount:+amount.value});
  save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more');
+ };
+}
+
+
+function fuelMetrics(records, startDate=null, endDate=null){
+ const rows=(records||[])
+   .filter(x=>Number.isFinite(+x.odo)&&+x.odo>0&&Number.isFinite(+x.litres)&&+x.litres>0)
+   .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+ let d=0,l=0,cost=0,count=0;
+ for(let i=1;i<rows.length;i++){
+   const cur=rows[i], prev=rows[i-1];
+   const delta=+cur.odo-+prev.odo;
+   const inPeriod=(!startDate||cur.date>=startDate)&&(!endDate||cur.date<=endDate);
+   if(delta>0 && inPeriod){
+     d+=delta; l+=+cur.litres; cost+=+cur.paid||0; count++;
+   }
+ }
+ return {
+   ready:count>0 && d>0,
+   distance:d, litres:l, cost:cost, count:count,
+   efficiency:(count>0&&l>0)?d/l:null,
+   costKm:(count>0&&d>0)?cost/d:null
  };
 }
 
@@ -133,8 +156,11 @@ function renderDashboard(){
  const income=price+wait+can, net=income-erp;
  const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Trip earnings',money(price)],['Waiting + cancellation',money(wait+can)],['ERP',money(erp)],['Fuel paid',money(fuel)],['Net earnings',money(net)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
- const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), fuelEff=fuelLit?dist/fuelLit:0, fuelCostKm=dist?fuel/dist:0, avgFuelPrice=fuelLit?fuel/fuelLit:0;
- document.getElementById('performance').innerHTML=[['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEff.toFixed(2)+' km/L'],['Fuel cost/km',money(fuelCostKm)],['Fuel litres',fuelLit.toFixed(2)+' L'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
+ const fm=fuelMetrics(db.fuel,d,d);
+ const fuelEffText=fm.ready?fm.efficiency.toFixed(2)+' km/L':'Needs 2 refills';
+ const fuelCostKmText=fm.ready?money(fm.costKm):'Needs 2 refills';
+ document.getElementById('performance').innerHTML=[['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Fuel litres',fuelLit.toFixed(2)+' L'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function renderTrips(){
  const el=document.getElementById('tripList'); if(!db.trips.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return}
@@ -142,7 +168,7 @@ function renderTrips(){
 }
 function renderFuel(){
  const el=document.getElementById('fuelList'); if(!db.fuel.length){el.innerHTML='<div class="empty">No fuel refills recorded yet.</div>';return}
- el.innerHTML=[...db.fuel].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b><br><span class="small">${x.litres.toFixed(2)} L · ${money(x.pp)}/L · ${x.discount}% discount</span></div><div><b>${money(x.paid)}</b><br><button onclick="del('fuel','${x.id}')">Delete</button></div></div>`).join('');
+ el.innerHTML=[...db.fuel].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b><br><span class="small">${Number(x.odo||0).toLocaleString()} km · ${x.litres.toFixed(2)} L · ${money(x.pp)}/L · ${x.discount}% discount</span></div><div><b>${money(x.paid)}</b><br><button onclick="del('fuel','${x.id}')">Delete</button></div></div>`).join('');
 }
 function renderCash(){
  const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
@@ -151,11 +177,12 @@ function renderCash(){
 function renderReports(){
  const p=document.getElementById('period').value, now=new Date(), start=new Date(now);
  if(p==='day')start.setHours(0,0,0,0); if(p==='week'){let day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0)} if(p==='month'){start.setDate(1);start.setHours(0,0,0,0)} if(p==='all')start.setFullYear(2000);
+ const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
  const inRange=x=>new Date(x.date+'T23:59:59')>=start;
  const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
  const dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), fees=t.reduce((a,x)=>a+x.waiting+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=f.reduce((a,x)=>a+x.paid,0), top=c.reduce((a,x)=>a+x.amount,0);
  const income=price+fees, net=income-erp;
- const litres=f.reduce((a,x)=>a+x.litres,0), fuelEff=litres?dist/litres:0, fuelCostKm=dist?fuel/dist:0, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff.toFixed(2)+' km/L'],['Fuel cost/km',money(fuelCostKm)],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
+ const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Needs 2+ refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Needs 2+ refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
