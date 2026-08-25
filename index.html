@@ -191,6 +191,25 @@ function fuelMetrics(records, startDate=null, endDate=null){
  };
 }
 
+
+function normalizeDB(){
+  const keys=['driverEarningsDB','driver_earnings_db','driverEarnings','earningsDB'];
+  let raw=null;
+  for(const k of keys){
+    try{ raw=localStorage.getItem(k); if(raw){ break; }}catch(e){}
+  }
+  if(!raw) return;
+  try{
+    const old=JSON.parse(raw);
+    const candidate=old.data||old.db||old;
+    if(!candidate || typeof candidate!=='object') return;
+    db.trips=Array.isArray(db.trips)&&db.trips.length?db.trips:(Array.isArray(candidate.trips)?candidate.trips:[]);
+    db.fuel=Array.isArray(db.fuel)&&db.fuel.length?db.fuel:(Array.isArray(candidate.fuel)?candidate.fuel:[]);
+    db.cash=Array.isArray(db.cash)&&db.cash.length?db.cash:(Array.isArray(candidate.cash)?candidate.cash:(Array.isArray(candidate.cashcard)?candidate.cashcard:[]));
+    if(typeof saveDB==='function') saveDB();
+  }catch(e){ console.warn('Data migration skipped',e); }
+}
+
 function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
  const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
@@ -281,6 +300,57 @@ document.addEventListener('click',e=>{
 });
 setTimeout(()=>renderFuelReport('day'),100);
 
+
+function renderTripsList(){
+  const host=document.getElementById('tripList')||document.getElementById('tripsList')||document.querySelector('[data-trip-list]');
+  if(!host) return;
+  const rows=Array.isArray(db.trips)?db.trips.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')):[];
+
+  if(!rows.length){
+    host.innerHTML='<div class="card"><div class="label">Trips</div><div class="value">No trips recorded</div><div class="small">Tap + Add Trip to enter your first trip.</div></div>';
+    return;
+  }
+
+  host.innerHTML=rows.map((x,i)=>{
+    const dist=+x.distance||+x.dist||0;
+    const price=+x.price||+x.earning||0;
+    const erp=+x.erp||0, wait=+x.wait||+x.waiting||0, can=+x.can||+x.cancellation||0;
+    const perKm=dist?price/dist:0;
+    const id=x.id??i;
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <div><div style="font-weight:800">${x.date||''} ${x.time||''}</div>
+        <div class="small">${dist.toFixed(1)} km · ${money(price)} · ${money(perKm)}/km</div></div>
+        <div style="font-weight:800">${money(price+wait+can-erp)}</div>
+      </div>
+      <div class="small" style="margin-top:8px">ERP ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="editTrip(${JSON.stringify(id)})">Edit</button>
+        <button onclick="deleteTrip(${JSON.stringify(id)})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function editTrip(id){
+  const x=db.trips.find((t,i)=>(t.id??i)==id);
+  if(!x) return;
+  // Use the existing edit flow when available.
+  if(typeof openTripForm==='function'){ openTripForm(x); return; }
+  if(typeof showTripForm==='function'){ showTripForm(x); return; }
+  alert('Trip selected. The edit form will be connected in the next UI update.');
+}
+function deleteTrip(id){
+  const i=db.trips.findIndex((t,idx)=>(t.id??idx)==id);
+  if(i<0) return;
+  if(!confirm('Delete this trip?')) return;
+  db.trips.splice(i,1);
+  if(typeof saveDB==='function') saveDB();
+  renderTripsList();
+  if(typeof renderDashboard==='function') renderDashboard();
+}
+
+
+setTimeout(()=>{try{normalizeDB(); if(typeof renderTripsList==='function')renderTripsList();}catch(e){console.warn(e)}},150);
 </script>
 </body>
 </html>
