@@ -110,39 +110,65 @@ function openPage(id){
 }
 document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>openPage(b.dataset.page));
 
-function openForm(type){
- openPage('formPage'); const f=document.getElementById('entryForm'); let title='';
- if(type==='trip'){title='Add Trip';f.innerHTML=`
- <div class="field"><label>Date</label><input id="date" type="date" value="${today()}"></div>
- <div class="field"><label>Time</label><input id="time" type="time"></div>
- <div class="field"><label>Distance travelled (km)</label><input id="distance" type="number" step="0.1" min="0" required></div>
- <div class="field"><label>Trip price ($)</label><input id="price" type="number" step="0.01" min="0" required></div>
- <div class="field"><label>ERP charge ($)</label><input id="erp" type="number" step="0.01" min="0" value="0"></div>
- <div class="field"><label>Waiting fee ($)</label><input id="waiting" type="number" step="0.01" min="0" value="0"></div>
- <div class="field"><label>Cancellation fee ($)</label><input id="cancel" type="number" step="0.01" min="0" value="0"></div>
- <button class="btn">Save Trip</button><button type="button" class="btn alt" onclick="openPage('trips')">Cancel</button>`}
- if(type==='fuel'){title='Add Fuel Refill';f.innerHTML=`
- <div class="field"><label>Refill date</label><input id="date" type="date" value="${today()}"></div>
- <div class="field"><label>Odometer reading (km)</label><input id="fuelOdo" type="number" step="0.1" min="0" required placeholder="e.g. 80000"></div>
- <div class="field"><label>Petrol amount (litres)</label><input id="litres" type="number" step="0.01" min="0" required></div>
- <div class="field"><label>Petrol price per litre ($)</label><input id="pp" type="number" step="0.001" min="0" required></div>
- <div class="field"><label>Discount (%)</label><input id="discount" type="number" step="0.01" min="0" max="100" value="0"></div>
- <div class="field"><label>Final amount paid ($)</label><input id="paid" type="number" step="0.01" min="0" required></div>
- <div class="small">The final amount paid is recorded as the actual amount charged.</div>
- <button class="btn">Save Fuel Refill</button><button type="button" class="btn alt" onclick="openPage('fuel')">Cancel</button>`}
- if(type==='cashcard'){title='CashCard Top-Up';f.innerHTML=`
- <div class="field"><label>Top-up date</label><input id="date" type="date" value="${today()}"></div>
- <div class="field"><label>Amount topped up ($)</label><input id="amount" type="number" step="0.01" min="0" required></div>
- <button class="btn">Save Top-Up</button><button type="button" class="btn alt" onclick="openPage('more')">Cancel</button>`}
+function openForm(type, editId=null){
+ openPage('formPage');
+ const f=document.getElementById('entryForm'); let title='';
+ const existing=editId ? db[type].find(x=>x.id===editId) : null;
+ if(type==='trip'){
+   const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0};
+   title=existing?'Edit Trip':'Add Trip';
+   f.innerHTML=`
+   <div class="field"><label>Date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Time</label><input id="time" type="time" value="${x.time||''}"></div>
+   <div class="field"><label>Distance travelled (km)</label><input id="distance" type="number" step="0.1" min="0" required value="${x.distance}"></div>
+   <div class="field"><label>Trip price ($)</label><input id="price" type="number" step="0.01" min="0" required value="${x.price}"></div>
+   <div class="field"><label>ERP charge ($)</label><input id="erp" type="number" step="0.01" min="0" value="${x.erp||0}"></div>
+   <div class="field"><label>Waiting fee ($)</label><input id="waiting" type="number" step="0.01" min="0" value="${x.waiting||0}"></div>
+   <div class="field"><label>Cancellation fee ($)</label><input id="cancel" type="number" step="0.01" min="0" value="${x.cancel||0}"></div>
+   <button class="btn">${existing?'Update Trip':'Save Trip'}</button>
+   <button type="button" class="btn alt" onclick="openPage('trips')">Cancel</button>`;
+ }
+ if(type==='fuel'){
+   const x=existing||{date:today(),odo:'',litres:'',pp:'',discount:0,paid:''};
+   title=existing?'Edit Fuel Refill':'Add Fuel Refill';
+   f.innerHTML=`
+   <div class="field"><label>Refill date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Odometer reading (km)</label><input id="fuelOdo" type="number" step="0.1" min="0" required value="${x.odo||''}" placeholder="e.g. 80000"></div>
+   <div class="field"><label>Petrol amount (litres)</label><input id="litres" type="number" step="0.01" min="0" required value="${x.litres||''}"></div>
+   <div class="field"><label>Petrol price per litre ($)</label><input id="pp" type="number" step="0.001" min="0" required value="${x.pp||''}"></div>
+   <div class="field"><label>Discount (%)</label><input id="discount" type="number" step="0.01" min="0" max="100" value="${x.discount||0}"></div>
+   <div class="field"><label>Final amount paid ($)</label><input id="paid" type="number" step="0.01" min="0" required value="${x.paid||''}"></div>
+   <div class="small">The final amount paid is recorded as the actual amount charged.</div>
+   <button class="btn">${existing?'Update Fuel':'Save Fuel Refill'}</button>
+   <button type="button" class="btn alt" onclick="openPage('fuel')">Cancel</button>`;
+ }
+ if(type==='cashcard'){
+   const x=existing||{date:today(),amount:''};
+   title=existing?'Edit CashCard Top-Up':'CashCard Top-Up';
+   f.innerHTML=`
+   <div class="field"><label>Top-up date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Amount topped up ($)</label><input id="amount" type="number" step="0.01" min="0" required value="${x.amount||''}"></div>
+   <button class="btn">${existing?'Update Top-Up':'Save Top-Up'}</button>
+   <button type="button" class="btn alt" onclick="openPage('more')">Cancel</button>`;
+ }
  document.getElementById('formTitle').textContent=title;
- f.onsubmit=e=>{e.preventDefault();
- if(type==='trip')db.trips.push({id:crypto.randomUUID(),date:date.value,time:time.value,distance:+distance.value,price:+price.value,erp:+erp.value,waiting:+waiting.value,cancel:+cancel.value});
- if(type==='fuel')db.fuel.push({id:crypto.randomUUID(),date:date.value,odo:+document.getElementById('fuelOdo').value, litres:+litres.value,pp:+pp.value,discount:+discount.value,paid:+paid.value});
- if(type==='cashcard')db.cashcard.push({id:crypto.randomUUID(),date:date.value,amount:+amount.value});
- save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more');
+ f.onsubmit=e=>{
+   e.preventDefault();
+   if(type==='trip'){
+     const data={date:date.value,time:time.value,distance:+distance.value,price:+price.value,erp:+erp.value,waiting:+waiting.value,cancel:+cancel.value};
+     if(existing) Object.assign(existing,data); else db.trips.push({id:crypto.randomUUID(),...data});
+   }
+   if(type==='fuel'){
+     const data={date:date.value,odo:+document.getElementById('fuelOdo').value,litres:+litres.value,pp:+pp.value,discount:+discount.value,paid:+paid.value};
+     if(existing) Object.assign(existing,data); else db.fuel.push({id:crypto.randomUUID(),...data});
+   }
+   if(type==='cashcard'){
+     const data={date:date.value,amount:+amount.value};
+     if(existing) Object.assign(existing,data); else db.cashcard.push({id:crypto.randomUUID(),...data});
+   }
+   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more');
  };
 }
-
 
 function fuelMetrics(records, startDate=null, endDate=null){
  const rows=(records||[])
@@ -178,16 +204,32 @@ function renderDashboard(){
  document.getElementById('performance').innerHTML=[['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Fuel litres',fuelLit.toFixed(2)+' L'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function renderTrips(){
- const el=document.getElementById('tripList'); if(!db.trips.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return}
- el.innerHTML=[...db.trips].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map((x,i)=>`<div class="item"><div><b>Trip ${db.trips.length-i}</b><br><span class="small">${fmtDate(x.date)} ${x.time||''} · ${x.distance.toFixed(1)} km</span><br><span class="pill">${x.distance?money(x.price/x.distance)+'/km':'—'}</span></div><div style="text-align:right"><b>${money(x.price)}</b><br><span class="small">ERP ${money(x.erp)}</span><br><button onclick="del('trips','${x.id}')">Delete</button></div></div>`).join('');
+ const el=document.getElementById('tripList');
+ if(!db.trips.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return}
+ const rows=[...db.trips].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+ const totalDist=rows.reduce((a,x)=>a+(+x.distance||0),0);
+ const totalIncome=rows.reduce((a,x)=>a+(+x.price||0)+(+x.waiting||0)+(+x.cancel||0),0);
+ el.innerHTML=`<div class="card" style="margin-bottom:10px"><div class="small">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total income: <b>${money(totalIncome)}</b></div></div>`+
+ rows.map((x)=>`<div class="item">
+   <div>
+     <b>${fmtDate(x.date)}${x.time?' · '+x.time:''}</b><br>
+     <span class="small">${(+x.distance||0).toFixed(1)} km · Trip ${money(x.price)} · ${x.distance?money(x.price/x.distance)+'/km':'—'}</span><br>
+     <span class="small">ERP ${money(x.erp)} · Waiting ${money(x.waiting)} · Cancellation ${money(x.cancel)}</span>
+   </div>
+   <div style="text-align:right">
+     <b>${money((+x.price||0)+(+x.waiting||0)+(+x.cancel||0))}</b><br>
+     <button onclick="openForm('trip','${x.id}')">Edit</button>
+     <button onclick="del('trips','${x.id}')">Delete</button>
+   </div>
+ </div>`).join('');
 }
 function renderFuel(){
  const el=document.getElementById('fuelList'); if(!db.fuel.length){el.innerHTML='<div class="empty">No fuel refills recorded yet.</div>';return}
- el.innerHTML=[...db.fuel].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b><br><span class="small">${Number(x.odo||0).toLocaleString()} km · ${x.litres.toFixed(2)} L · ${money(x.pp)}/L · ${x.discount}% discount</span></div><div><b>${money(x.paid)}</b><br><button onclick="del('fuel','${x.id}')">Delete</button></div></div>`).join('');
+ el.innerHTML=[...db.fuel].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b><br><span class="small">${Number(x.odo||0).toLocaleString()} km · ${x.litres.toFixed(2)} L · ${money(x.pp)}/L · ${x.discount}% discount</span></div><div><b>${money(x.paid)}</b><br><button onclick="openForm('fuel','${x.id}')">Edit</button> <button onclick="del('fuel','${x.id}')">Delete</button></div></div>`).join('');
 }
 function renderCash(){
  const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
- el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button onclick="del('cashcard','${x.id}')">Delete</button></div></div>`).join('');
+ el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button onclick="openForm('cashcard','${x.id}')">Edit</button> <button onclick="del('cashcard','${x.id}')">Delete</button></div></div>`).join('');
 }
 function renderReports(){
  const p=document.getElementById('period').value, now=new Date(), start=new Date(now);
