@@ -20,6 +20,9 @@ form{display:grid;gap:11px}.field label{display:block;font-size:12px;color:#6474
 select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-size:16px;background:#fff}
 .small{font-size:12px;color:#718096}.pill{display:inline-block;padding:5px 8px;border-radius:9px;background:#eaf2ff;color:#123B72;font-size:11px;font-weight:700}
 .empty{text-align:center;color:#718096;padding:28px 8px}.danger{background:#fff0f0;color:#b42318}
+
+.periodBtn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;background:#e8eef7;color:#18365f}
+.periodBtn.active{background:#183f78;color:#fff}
 </style>
 </head>
 <body>
@@ -57,6 +60,18 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <select id="period" onchange="renderReports()"><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>
   </div>
   <div class="grid" id="reportGrid" style="margin-top:12px"></div>
+<div class="card" style="margin-top:14px">
+  <div style="font-weight:800;font-size:20px;margin-bottom:10px">Fuel Analysis</div>
+  <div class="small" style="margin-bottom:12px">Compare fuel performance by period.</div>
+  <div id="fuelReportPeriod" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <button class="periodBtn active" data-period="day">Today</button>
+    <button class="periodBtn" data-period="week">This Week</button>
+    <button class="periodBtn" data-period="month">This Month</button>
+    <button class="periodBtn" data-period="all">All Time</button>
+  </div>
+  <div id="fuelReportGrid" class="grid"></div>
+</div>
+
 </section>
 
 <section id="more" class="page">
@@ -189,6 +204,41 @@ function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filte
 function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
 function renderAll(){document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});renderDashboard();renderTrips();renderFuel();renderCash();renderReports()}
 renderAll();
+
+function fuelPeriodDates(period){
+  const now=new Date(), start=new Date(now);
+  if(period==='day') start.setHours(0,0,0,0);
+  if(period==='week'){const day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0);}
+  if(period==='month'){start.setDate(1);start.setHours(0,0,0,0);}
+  if(period==='all'){start.setFullYear(2000);start.setHours(0,0,0,0);}
+  return {start:start.toISOString().slice(0,10),end:now.toISOString().slice(0,10)};
+}
+function renderFuelReport(period='day'){
+  const grid=document.getElementById('fuelReportGrid');
+  if(!grid || typeof db==='undefined') return;
+  const r=fuelPeriodDates(period);
+  const rows=(db.fuel||[]).filter(x=>x.date>=r.start&&x.date<=r.end);
+  const litres=rows.reduce((a,x)=>a+(+x.litres||0),0);
+  const paid=rows.reduce((a,x)=>a+(+x.paid||0),0);
+  const avg=litres?paid/litres:0;
+  const fm=typeof fuelMetrics==='function'?fuelMetrics(db.fuel,r.start,r.end):{ready:false};
+  const cards=[
+    ['Fuel paid',money(paid)],
+    ['Fuel litres',litres.toFixed(2)+' L'],
+    ['Avg fuel price',money(avg)+'/L'],
+    ['Fuel efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'Needs 2 refills'],
+    ['Fuel cost/km',fm.ready?money(fm.costKm):'Needs 2 refills'],
+    ['Refills',rows.length]
+  ];
+  grid.innerHTML=cards.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.periodBtn'); if(!b) return;
+  document.querySelectorAll('.periodBtn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); renderFuelReport(b.dataset.period);
+});
+setTimeout(()=>renderFuelReport('day'),100);
+
 </script>
 </body>
 </html>
