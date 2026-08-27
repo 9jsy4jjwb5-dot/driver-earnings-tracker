@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
 <title>Driver Earnings Tracker</title>
+<meta name="app-version" content="8">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -62,7 +63,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div class="grid" id="reportGrid" style="margin-top:12px"></div>
 <div class="card" style="margin-top:14px">
   <div style="font-weight:800;font-size:20px;margin-bottom:10px">Fuel Analysis</div>
-  <div class="small" style="margin-bottom:12px">Compare fuel performance by period.</div>
+  <div class="small" style="margin-bottom:12px">Fuel efficiency and fuel cost/km use odometer distance between refills. Select Day, Week or Month.</div>
   <div id="fuelReportPeriod" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
     <button class="periodBtn active" data-period="day">Today</button>
     <button class="periodBtn" data-period="week">This Week</button>
@@ -171,9 +172,12 @@ function openForm(type, editId=null){
 }
 
 function fuelMetrics(records, startDate=null, endDate=null){
+ // Tank-to-tank method: each refill's litres/cost are matched to the
+ // distance driven since the previous valid odometer reading. The refill
+ // date determines which day/week/month receives that interval.
  const rows=(records||[])
    .filter(x=>Number.isFinite(+x.odo)&&+x.odo>0&&Number.isFinite(+x.litres)&&+x.litres>0)
-   .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+   .sort((a,b)=>{const da=(a.date||'')+(a.time||''); const db=(b.date||'')+(b.time||''); return da.localeCompare(db) || (+a.odo-+b.odo);});
  let d=0,l=0,cost=0,count=0;
  for(let i=1;i<rows.length;i++){
    const cur=rows[i], prev=rows[i-1];
@@ -184,7 +188,7 @@ function fuelMetrics(records, startDate=null, endDate=null){
    }
  }
  return {
-   ready:count>0 && d>0,
+   ready:count>0 && d>0 && l>0,
    distance:d, litres:l, cost:cost, count:count,
    efficiency:(count>0&&l>0)?d/l:null,
    costKm:(count>0&&d>0)?cost/d:null
@@ -218,8 +222,8 @@ function renderDashboard(){
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
  const fm=fuelMetrics(db.fuel,d,d);
- const fuelEffText=fm.ready?fm.efficiency.toFixed(2)+' km/L':'Needs 2 refills';
- const fuelCostKmText=fm.ready?money(fm.costKm):'Needs 2 refills';
+ const fuelEffText=fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills';
+ const fuelCostKmText=fm.ready?money(fm.costKm):'Add 2+ odometer refills';
  document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Fuel litres',fuelLit.toFixed(2)+' L'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function renderTrips(){
@@ -258,7 +262,7 @@ function renderReports(){
  const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
  const dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), fees=t.reduce((a,x)=>a+x.waiting+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=f.reduce((a,x)=>a+x.paid,0), top=c.reduce((a,x)=>a+x.amount,0);
  const income=price+fees, net=income-erp;
- const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Needs 2+ refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Needs 2+ refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
+ const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
@@ -287,8 +291,9 @@ function renderFuelReport(period='day'){
     ['Fuel paid',money(paid)],
     ['Fuel litres',litres.toFixed(2)+' L'],
     ['Avg fuel price',money(avg)+'/L'],
-    ['Fuel efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'Needs 2 refills'],
-    ['Fuel cost/km',fm.ready?money(fm.costKm):'Needs 2 refills'],
+    ['Distance between refills',fm.ready?fm.distance.toFixed(1)+' km':'—'],
+    ['Fuel efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills'],
+    ['Fuel cost/km',fm.ready?money(fm.costKm):'Add 2+ odometer refills'],
     ['Refills',rows.length]
   ];
   grid.innerHTML=cards.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
