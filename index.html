@@ -225,7 +225,7 @@ function renderDashboard(){
  const fuelEffText=fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills';
  const fuelCostKmText=fm.ready?money(fm.costKm):'Add 2+ odometer refills';
  const intervalLitresText=fm.ready?fm.litres.toFixed(2)+' L':'—';
- document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Total fuel purchased',fuelLit.toFixed(2)+' L'],['Fuel used for efficiency',intervalLitresText],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Total fuel purchased',fuelLit.toFixed(2)+' L'],['Fuel used for efficiency',intervalLitresText],['Distance covered for efficiency',fm.ready?fm.distance.toFixed(1)+' km':'—'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function renderTrips(){
  const el=document.getElementById('tripList');
