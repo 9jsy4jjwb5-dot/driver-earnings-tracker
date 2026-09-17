@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123B72">
+<title>Driver Earnings Tracker V12</title>
+<meta name="app-version" content="8">
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
+.app{max-width:520px;margin:auto;min-height:100vh;padding-bottom:86px}.top{background:#123B72;color:#fff;padding:22px 18px 20px;border-radius:0 0 24px 24px}
+h1{font-size:24px;margin:0 0 5px}.date{opacity:.85;font-size:14px}.content{padding:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border-radius:18px;padding:15px;box-shadow:0 4px 18px #183b6812}.label{font-size:12px;color:#718096}.value{font-size:22px;font-weight:700;margin-top:5px}.wide{grid-column:1/-1}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.btn{border:0;border-radius:14px;padding:14px;font-weight:700;background:#123B72;color:white}.btn.alt{background:#e8f0fb;color:#123B72}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e5eaf1;display:flex;justify-content:center;z-index:5}.navin{width:min(520px,100%);display:flex;justify-content:space-around;padding:10px 4px calc(10px + env(safe-area-inset-bottom))}
+.navbtn{background:none;border:0;color:#718096;font-size:11px}.navbtn.active{color:#123B72;font-weight:700}
+.page{display:none}.page.active{display:block}.section-title{font-size:18px;font-weight:750;margin:8px 0 12px}
+.item{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #edf0f5}.item:last-child{border:0}
+form{display:grid;gap:11px}.field label{display:block;font-size:12px;color:#64748b;margin:0 0 5px}.field input{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-size:16px;background:#fff}
+select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-size:16px;background:#fff}
+.small{font-size:12px;color:#718096}.pill{display:inline-block;padding:5px 8px;border-radius:9px;background:#eaf2ff;color:#123B72;font-size:11px;font-weight:700}
+.empty{text-align:center;color:#718096;padding:28px 8px}.danger{background:#fff0f0;color:#b42318}
+
+.periodBtn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;background:#e8eef7;color:#18365f}
+.periodBtn.active{background:#183f78;color:#fff}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top"><h1>Driver Earnings</h1><div class="date" id="headerDate"></div></header>
+
+<main class="content">
+<section id="dashboard" class="page active">
+  <div class="actions">
+    <button class="btn" onclick="openForm('trip')">＋ Add Trip</button>
+    <button class="btn alt" onclick="openForm('fuel')">＋ Add Fuel</button>
+    <button class="btn alt wide" onclick="openForm('cashcard')">＋ CashCard Top-Up</button>
+  </div>
+  <div class="section-title">Today's Summary</div>
+  <div class="grid" id="summary"></div>
+  <div class="section-title">Performance</div>
+  <div class="grid" id="performance"></div>
+</section>
+
+<section id="trips" class="page">
+  <div class="section-title">Trips</div>
+  <div id="tripList" class="card"></div>
+</section>
+
+<section id="fuel" class="page">
+  <div class="section-title">Fuel Refills</div>
+  <button class="btn" onclick="openForm('fuel')">＋ Add Fuel Refill</button>
+  <div id="fuelList" class="card" style="margin-top:12px"></div>
+</section>
+
+<section id="reports" class="page">
+  <div class="section-title">Reports</div>
+  <div class="card">
+    <label class="small">Period</label>
+    <select id="period" onchange="renderReports()"><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>
+  </div>
+  <div class="grid" id="reportGrid" style="margin-top:12px"></div>
+<div class="card" style="margin-top:14px">
+  <div style="font-weight:800;font-size:20px;margin-bottom:10px">Fuel Analysis</div>
+  <div class="small" style="margin-bottom:12px">Total fuel purchased includes every refill in the selected period. Fuel efficiency and fuel cost/km use the fuel associated with the refill-to-refill interval and odometer distance. These are shown separately to avoid mixing purchased fuel with interval fuel usage.</div>
+  <div id="fuelReportPeriod" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <button class="periodBtn active" data-period="day">Today</button>
+    <button class="periodBtn" data-period="week">This Week</button>
+    <button class="periodBtn" data-period="month">This Month</button>
+    <button class="periodBtn" data-period="all">All Time</button>
+  </div>
+  <div id="fuelReportGrid" class="grid"></div>
+</div>
+
+</section>
+
+<section id="more" class="page">
+  <div class="section-title">More</div>
+  <button class="btn alt wide" onclick="openForm('cashcard')">＋ CashCard Top-Up</button>
+  <div id="cashList" class="card" style="margin-top:12px"></div>
+  <button class="btn danger wide" style="margin-top:12px" onclick="clearData()">Delete All Data</button>
+</section>
+
+<section id="formPage" class="page">
+  <div class="section-title" id="formTitle"></div>
+  <form id="entryForm"></form>
+</section>
+</main>
+
+<nav><div class="navin">
+<button class="navbtn active" data-page="dashboard">⌂<br>Dashboard</button>
+<button class="navbtn" data-page="trips">🚕<br>Trips</button>
+<button class="navbtn" data-page="fuel">⛽<br>Fuel</button>
+<button class="navbtn" data-page="reports">▥<br>Reports</button>
+<button class="navbtn" data-page="more">•••<br>More</button>
+</div></nav>
+</div>
+
+<script>
+const KEY="driverEarningsV1";
+
+const BACKUP_KEY="driverEarningsBackupV12";
+const BACKUP_KEY_2="driverEarningsBackupV12_2";
+
+function safeSnapshot(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw) localStorage.setItem(BACKUP_KEY,raw);
+    if(raw) localStorage.setItem(BACKUP_KEY_2,raw);
+  }catch(e){ console.warn("Backup failed",e); }
+}
+function restoreFromBackup(){
+  try{
+    const raw=localStorage.getItem(BACKUP_KEY) || localStorage.getItem(BACKUP_KEY_2);
+    if(!raw) return false;
+    localStorage.setItem(KEY,raw);
+    return true;
+  }catch(e){ return false; }
+}
+function exportBackup(){
+  try{
+    const raw=localStorage.getItem(KEY) || JSON.stringify(db);
+    const blob=new Blob([raw],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="driver-earnings-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }catch(e){ alert("Could not export backup."); }
+}
+function importBackupFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const parsed=JSON.parse(reader.result);
+      if(!parsed || typeof parsed!=="object") throw new Error("Invalid");
+      const clean={
+        trips:Array.isArray(parsed.trips)?parsed.trips:[],
+        fuel:Array.isArray(parsed.fuel)?parsed.fuel:[],
+        cashcard:Array.isArray(parsed.cashcard)?parsed.cashcard:(Array.isArray(parsed.cash)?parsed.cash:[])
+      };
+      localStorage.setItem(KEY,JSON.stringify(clean));
+      localStorage.setItem(BACKUP_KEY,JSON.stringify(clean));
+      localStorage.setItem(BACKUP_KEY_2,JSON.stringify(clean));
+      db=clean;
+      if(typeof renderAll==="function") renderAll();
+      else { if(typeof renderTripsList==="function")renderTripsList(); if(typeof renderDashboard==="function")renderDashboard(); }
+      alert("Backup imported successfully.");
+    }catch(e){ alert("Invalid backup file."); }
+  };
+  reader.readAsText(file);
+}
+
+let db=JSON.parse(localStorage.getItem(KEY)||'{"trips":[],"fuel":[],"cashcard":[]}');
+const today=()=>new Date().toISOString().slice(0,10);
+const money=n=>'$'+Number(n||0).toFixed(2);
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(db));renderAll()};
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function fmtDate(s){return new Date(s+'T00:00:00').toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'})}
+function openPage(id){
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active')); document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.page===id));
+}
+document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>openPage(b.dataset.page));
+
+function openForm(type, editId=null){
+ openPage('formPage');
+ const f=document.getElementById('entryForm'); let title='';
+ const existing=editId ? db[type].find(x=>x.id===editId) : null;
+ if(type==='trip'){
+   const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0};
+   title=existing?'Edit Trip':'Add Trip';
+   f.innerHTML=`
+   <div class="field"><label>Date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Time</label><input id="time" type="time" value="${x.time||''}"></div>
+   <div class="field"><label>Distance travelled (km)</label><input id="distance" type="number" step="0.1" min="0" required value="${x.distance}"></div>
+   <div class="field"><label>Trip price ($)</label><input id="price" type="number" step="0.01" min="0" required value="${x.price}"></div>
+   <div class="field"><label>ERP charge ($)</label><input id="erp" type="number" step="0.01" min="0" value="${x.erp||0}"></div>
+   <div class="field"><label>Waiting fee ($)</label><input id="waiting" type="number" step="0.01" min="0" value="${x.waiting||0}"></div>
+   <div class="field"><label>Cancellation fee ($)</label><input id="cancel" type="number" step="0.01" min="0" value="${x.cancel||0}"></div>
+   <button class="btn">${existing?'Update Trip':'Save Trip'}</button>
+   <button type="button" class="btn alt" onclick="openPage('trips')">Cancel</button>`;
+ }
+ if(type==='fuel'){
+   const x=existing||{date:today(),odo:'',litres:'',pp:'',discount:0,paid:''};
+   title=existing?'Edit Fuel Refill':'Add Fuel Refill';
+   f.innerHTML=`
+   <div class="field"><label>Refill date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Odometer reading (km)</label><input id="fuelOdo" type="number" step="0.1" min="0" required value="${x.odo||''}" placeholder="e.g. 80000"></div>
+   <div class="field"><label>Petrol amount (litres)</label><input id="litres" type="number" step="0.01" min="0" required value="${x.litres||''}"></div>
+   <div class="field"><label>Petrol price per litre ($)</label><input id="pp" type="number" step="0.001" min="0" required value="${x.pp||''}"></div>
+   <div class="field"><label>Discount (%)</label><input id="discount" type="number" step="0.01" min="0" max="100" value="${x.discount||0}"></div>
+   <div class="field"><label>Final amount paid ($)</label><input id="paid" type="number" step="0.01" min="0" required value="${x.paid||''}"></div>
+   <div class="small">The final amount paid is recorded as the actual amount charged.</div>
+   <button class="btn">${existing?'Update Fuel':'Save Fuel Refill'}</button>
+   <button type="button" class="btn alt" onclick="openPage('fuel')">Cancel</button>`;
+ }
+ if(type==='cashcard'){
+   const x=existing||{date:today(),amount:''};
+   title=existing?'Edit CashCard Top-Up':'CashCard Top-Up';
+   f.innerHTML=`
+   <div class="field"><label>Top-up date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Amount topped up ($)</label><input id="amount" type="number" step="0.01" min="0" required value="${x.amount||''}"></div>
+   <button class="btn">${existing?'Update Top-Up':'Save Top-Up'}</button>
+   <button type="button" class="btn alt" onclick="openPage('more')">Cancel</button>`;
+ }
+ document.getElementById('formTitle').textContent=title;
+ f.onsubmit=e=>{
+   e.preventDefault();
+   if(type==='trip'){
+     const data={date:date.value,time:time.value,distance:+distance.value,price:+price.value,erp:+erp.value,waiting:+waiting.value,cancel:+cancel.value};
+     if(existing) Object.assign(existing,data); else db.trips.push({id:crypto.randomUUID(),...data});
+   }
+   if(type==='fuel'){
+     const data={date:date.value,odo:+document.getElementById('fuelOdo').value,litres:+litres.value,pp:+pp.value,discount:+discount.value,paid:+paid.value};
+     if(existing) Object.assign(existing,data); else db.fuel.push({id:crypto.randomUUID(),...data});
+   }
+   if(type==='cashcard'){
+     const data={date:date.value,amount:+amount.value};
+     if(existing) Object.assign(existing,data); else db.cashcard.push({id:crypto.randomUUID(),...data});
+   }
+   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more');
+ };
+}
+
+function fuelMetrics(records, startDate=null, endDate=null){
+ // Tank-to-tank method: each refill's litres/cost are matched to the
+ // distance driven since the previous valid odometer reading. The refill
+ // date determines which day/week/month receives that interval.
+ const rows=(records||[])
+   .filter(x=>Number.isFinite(+x.odo)&&+x.odo>0&&Number.isFinite(+x.litres)&&+x.litres>0)
+   .sort((a,b)=>{const da=(a.date||'')+(a.time||''); const db=(b.date||'')+(b.time||''); return da.localeCompare(db) || (+a.odo-+b.odo);});
+ let d=0,l=0,cost=0,count=0;
+ for(let i=1;i<rows.length;i++){
+   const cur=rows[i], prev=rows[i-1];
+   const delta=+cur.odo-+prev.odo;
+   const inPeriod=(!startDate||cur.date>=startDate)&&(!endDate||cur.date<=endDate);
+   if(delta>0 && inPeriod){
+     d+=delta; l+=+cur.litres; cost+=+cur.paid||0; count++;
+   }
+ }
+ return {
+   ready:count>0 && d>0 && l>0,
+   distance:d, litres:l, cost:cost, count:count,
+   efficiency:(count>0&&l>0)?d/l:null,
+   costKm:(count>0&&d>0)?cost/d:null
+ };
+}
+
+
+function normalizeDB(){
+  const keys=['driverEarningsDB','driver_earnings_db','driverEarnings','earningsDB'];
+  let raw=null;
+  for(const k of keys){
+    try{ raw=localStorage.getItem(k); if(raw){ break; }}catch(e){}
+  }
+  if(!raw) return;
+  try{
+    const old=JSON.parse(raw);
+    const candidate=old.data||old.db||old;
+    if(!candidate || typeof candidate!=='object') return;
+    db.trips=Array.isArray(db.trips)&&db.trips.length?db.trips:(Array.isArray(candidate.trips)?candidate.trips:[]);
+    db.fuel=Array.isArray(db.fuel)&&db.fuel.length?db.fuel:(Array.isArray(candidate.fuel)?candidate.fuel:[]);
+    db.cash=Array.isArray(db.cash)&&db.cash.length?db.cash:(Array.isArray(candidate.cash)?candidate.cash:(Array.isArray(candidate.cashcard)?candidate.cashcard:[]));
+    if(typeof saveDB==='function') saveDB();
+  }catch(e){ console.warn('Data migration skipped',e); }
+}
+
+function renderDashboard(){
+ const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
+ const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
+ const income=price+wait+can, net=income-erp;
+ const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Trip earnings',money(price)],['Waiting + cancellation',money(wait+can)],['ERP',money(erp)],['Fuel paid',money(fuel)],['Net earnings',money(net)],['CashCard top-ups',money(top)]];
+ document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
+ const fm=fuelMetrics(db.fuel,d,d);
+ const fuelEffText=fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills';
+ const fuelCostKmText=fm.ready?money(fm.costKm):'Add 2+ odometer refills';
+ const intervalLitresText=fm.ready?fm.litres.toFixed(2)+' L':'—';
+ document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Total fuel purchased',fuelLit.toFixed(2)+' L'],['Fuel used for efficiency',intervalLitresText],['Distance covered for efficiency',fm.ready?fm.distance.toFixed(1)+' km':'—'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+}
+function renderTrips(){
+ const el=document.getElementById('tripList');
+ if(!db.trips.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return}
+ const rows=[...db.trips].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+ const totalDist=rows.reduce((a,x)=>a+(+x.distance||0),0);
+ const totalIncome=rows.reduce((a,x)=>a+(+x.price||0)+(+x.waiting||0)+(+x.cancel||0),0);
+ el.innerHTML=`<div class="card" style="margin-bottom:10px"><div class="small">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total income: <b>${money(totalIncome)}</b></div></div>`+
+ rows.map((x)=>`<div class="item">
+   <div>
+     <b>${fmtDate(x.date)}${x.time?' · '+x.time:''}</b><br>
+     <span class="small">${(+x.distance||0).toFixed(1)} km · Trip ${money(x.price)} · ${x.distance?money(x.price/x.distance)+'/km':'—'}</span><br>
+     <span class="small">ERP ${money(x.erp)} · Waiting ${money(x.waiting)} · Cancellation ${money(x.cancel)}</span>
+   </div>
+   <div style="text-align:right">
+     <b>${money((+x.price||0)+(+x.waiting||0)+(+x.cancel||0))}</b><br>
+     <button onclick="openForm('trip','${x.id}')">Edit</button>
+     <button onclick="del('trips','${x.id}')">Delete</button>
+   </div>
+ </div>`).join('');
+}
+function renderFuel(){
+ const el=document.getElementById('fuelList'); if(!db.fuel.length){el.innerHTML='<div class="empty">No fuel refills recorded yet.</div>';return}
+ el.innerHTML=[...db.fuel].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b><br><span class="small">${Number(x.odo||0).toLocaleString()} km · ${x.litres.toFixed(2)} L · ${money(x.pp)}/L · ${x.discount}% discount</span></div><div><b>${money(x.paid)}</b><br><button onclick="openForm('fuel','${x.id}')">Edit</button> <button onclick="del('fuel','${x.id}')">Delete</button></div></div>`).join('');
+}
+function renderCash(){
+ const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
+ el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button onclick="openForm('cashcard','${x.id}')">Edit</button> <button onclick="del('cashcard','${x.id}')">Delete</button></div></div>`).join('');
+}
+function renderReports(){
+ const p=document.getElementById('period').value, now=new Date(), start=new Date(now);
+ if(p==='day')start.setHours(0,0,0,0); if(p==='week'){let day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0)} if(p==='month'){start.setDate(1);start.setHours(0,0,0,0)} if(p==='all')start.setFullYear(2000);
+ const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
+ const inRange=x=>new Date(x.date+'T23:59:59')>=start;
+ const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
+ const dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), fees=t.reduce((a,x)=>a+x.waiting+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=f.reduce((a,x)=>a+x.paid,0), top=c.reduce((a,x)=>a+x.amount,0);
+ const income=price+fees, net=income-erp;
+ const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
+ document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+}
+function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
+function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
+function renderAll(){document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});renderDashboard();renderTrips();renderFuel();renderCash();renderReports()}
+renderAll();
+
+function fuelPeriodDates(period){
+  const now=new Date(), start=new Date(now);
+  if(period==='day') start.setHours(0,0,0,0);
+  if(period==='week'){const day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0);}
+  if(period==='month'){start.setDate(1);start.setHours(0,0,0,0);}
+  if(period==='all'){start.setFullYear(2000);start.setHours(0,0,0,0);}
+  return {start:start.toISOString().slice(0,10),end:now.toISOString().slice(0,10)};
+}
+function renderFuelReport(period='day'){
+  const grid=document.getElementById('fuelReportGrid');
+  if(!grid || typeof db==='undefined') return;
+  const r=fuelPeriodDates(period);
+  const rows=(db.fuel||[]).filter(x=>x.date>=r.start&&x.date<=r.end);
+  const litres=rows.reduce((a,x)=>a+(+x.litres||0),0);
+  const paid=rows.reduce((a,x)=>a+(+x.paid||0),0);
+  const avg=litres?paid/litres:0;
+  const fm=typeof fuelMetrics==='function'?fuelMetrics(db.fuel,r.start,r.end):{ready:false};
+  const cards=[
+    ['Total fuel purchased',litres.toFixed(2)+' L'],
+    ['Total fuel paid',money(paid)],
+    ['Avg fuel price',money(avg)+'/L'],
+    ['Fuel used for efficiency',fm.ready?fm.litres.toFixed(2)+' L':'—'],
+    ['Distance covered',fm.ready?fm.distance.toFixed(1)+' km':'—'],
+    ['Fuel efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills'],
+    ['Fuel cost/km',fm.ready?money(fm.costKm):'Add 2+ odometer refills'],
+    ['Refills',rows.length]
+  ];
+  grid.innerHTML=cards.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.periodBtn'); if(!b) return;
+  document.querySelectorAll('.periodBtn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); renderFuelReport(b.dataset.period);
+});
+setTimeout(()=>renderFuelReport('day'),100);
+
+
+function renderTripsList(){
+  const host=document.getElementById('tripList')||document.getElementById('tripsList')||document.querySelector('[data-trip-list]');
+  if(!host) return;
+  const rows=Array.isArray(db.trips)?db.trips.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')):[];
+
+  if(!rows.length){
+    host.innerHTML='<div class="card"><div class="label">Trips</div><div class="value">No trips recorded</div><div class="small">Tap + Add Trip to enter your first trip.</div></div>';
+    return;
+  }
+
+  host.innerHTML=rows.map((x,i)=>{
+    const dist=+x.distance||+x.dist||0;
+    const price=+x.price||+x.earning||0;
+    const erp=+x.erp||0, wait=+x.wait||+x.waiting||0, can=+x.can||+x.cancellation||0;
+    const perKm=dist?price/dist:0;
+    const id=x.id??i;
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <div><div style="font-weight:800">${x.date||''} ${x.time||''}</div>
+        <div class="small">${dist.toFixed(1)} km · ${money(price)} · ${money(perKm)}/km</div></div>
+        <div style="font-weight:800">${money(price+wait+can-erp)}</div>
+      </div>
+      <div class="small" style="margin-top:8px">ERP ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="editTrip(${JSON.stringify(id)})">Edit</button>
+        <button onclick="deleteTrip(${JSON.stringify(id)})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function editTrip(id){
+  const x=db.trips.find((t,i)=>(t.id??i)==id);
+  if(!x) return;
+  // Use the existing edit flow when available.
+  if(typeof openTripForm==='function'){ openTripForm(x); return; }
+  if(typeof showTripForm==='function'){ showTripForm(x); return; }
+  alert('Trip selected. The edit form will be connected in the next UI update.');
+}
+function deleteTrip(id){
+  const i=db.trips.findIndex((t,idx)=>(t.id??idx)==id);
+  if(i<0) return;
+  if(!confirm('Delete this trip?')) return;
+  db.trips.splice(i,1);
+  if(typeof saveDB==='function') saveDB();
+  renderTripsList();
+  if(typeof renderDashboard==='function') renderDashboard();
+}
+
+
+setTimeout(()=>{try{normalizeDB(); if(typeof renderTripsList==='function')renderTripsList();}catch(e){console.warn(e)}},150);
+</script>
+
+<div id="backupPanelV12" style="padding:16px;max-width:700px;margin:12px auto;">
+  <div style="border:1px solid #ddd;border-radius:16px;padding:16px;background:#fff;">
+    <h3 style="margin:0 0 8px;">💾 Data Backup</h3>
+    <p style="margin:0 0 12px;font-size:14px;opacity:.75;">
+      V12 keeps a local backup and lets you export your records before updating the app.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" onclick="exportBackup()">📤 Export Backup</button>
+      <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid #ccc;border-radius:10px;cursor:pointer;">
+        📥 Import Backup
+        <input type="file" accept=".json,application/json" style="display:none"
+          onchange="importBackupFile(this.files[0])">
+      </label>
+    </div>
+  </div>
+</div>
+<script>
+setTimeout(function(){
+  try{
+    if(typeof safeSnapshot==="function") safeSnapshot();
+  }catch(e){}
+},300);
+</script>
+
+</body>
+</html>
+<script>
+(function(){
+  const originalSetItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(k,v){
+    originalSetItem.call(this,k,v);
+    if(k==="driverEarningsV1"){
+      try{
+        originalSetItem.call(this,"driverEarningsBackupV12",v);
+        originalSetItem.call(this,"driverEarningsBackupV12_2",v);
+      }catch(e){}
+    }
+  };
+})();
+</script>
