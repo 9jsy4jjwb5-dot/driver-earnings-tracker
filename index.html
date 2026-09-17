@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker</title>
+<title>Driver Earnings Tracker V13</title>
 <meta name="app-version" content="8">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -80,6 +80,21 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <button class="btn alt wide" onclick="openForm('cashcard')">＋ CashCard Top-Up</button>
   <div id="cashList" class="card" style="margin-top:12px"></div>
   <button class="btn danger wide" style="margin-top:12px" onclick="clearData()">Delete All Data</button>
+<div class="card" style="margin-top:16px;">
+  <div class="section-title" style="font-size:22px;margin-bottom:6px;">💾 Data Backup</div>
+  <div class="small" style="margin-bottom:12px;">
+    Export your records before updating the app. You can import the backup later if needed.
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn alt" type="button" onclick="exportBackup()">📤 Export Backup</button>
+    <label class="btn alt" style="cursor:pointer;">
+      📥 Import Backup
+      <input type="file" accept=".json,application/json" style="display:none"
+        onchange="importBackupFile(this.files[0])">
+    </label>
+  </div>
+</div>
+
 </section>
 
 <section id="formPage" class="page">
@@ -99,6 +114,70 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 
 <script>
 const KEY="driverEarningsV1";
+
+const BACKUP_KEY="driverEarningsBackupV13";
+const BACKUP_KEY_2="driverEarningsBackupV13_2";
+
+
+function restoreIfMainKeyMissing(){
+  try{
+    if(localStorage.getItem(KEY)===null){
+      const raw=localStorage.getItem(BACKUP_KEY) || localStorage.getItem(BACKUP_KEY_2);
+      if(raw) localStorage.setItem(KEY,raw);
+    }
+  }catch(e){}
+}
+function safeSnapshot(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw) localStorage.setItem(BACKUP_KEY,raw);
+    if(raw) localStorage.setItem(BACKUP_KEY_2,raw);
+  }catch(e){ console.warn("Backup failed",e); }
+}
+function restoreFromBackup(){
+  try{
+    const raw=localStorage.getItem(BACKUP_KEY) || localStorage.getItem(BACKUP_KEY_2);
+    if(!raw) return false;
+    localStorage.setItem(KEY,raw);
+    return true;
+  }catch(e){ return false; }
+}
+function exportBackup(){
+  try{
+    const raw=localStorage.getItem(KEY) || JSON.stringify(db);
+    const blob=new Blob([raw],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="driver-earnings-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }catch(e){ alert("Could not export backup."); }
+}
+function importBackupFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const parsed=JSON.parse(reader.result);
+      if(!parsed || typeof parsed!=="object") throw new Error("Invalid");
+      const clean={
+        trips:Array.isArray(parsed.trips)?parsed.trips:[],
+        fuel:Array.isArray(parsed.fuel)?parsed.fuel:[],
+        cashcard:Array.isArray(parsed.cashcard)?parsed.cashcard:(Array.isArray(parsed.cash)?parsed.cash:[])
+      };
+      localStorage.setItem(KEY,JSON.stringify(clean));
+      localStorage.setItem(BACKUP_KEY,JSON.stringify(clean));
+      localStorage.setItem(BACKUP_KEY_2,JSON.stringify(clean));
+      db=clean;
+      if(typeof renderAll==="function") restoreIfMainKeyMissing();
+renderAll();
+      else { if(typeof renderTripsList==="function")renderTripsList(); if(typeof renderDashboard==="function")renderDashboard(); }
+      alert("Backup imported successfully.");
+    }catch(e){ alert("Invalid backup file."); }
+  };
+  reader.readAsText(file);
+}
+
 let db=JSON.parse(localStorage.getItem(KEY)||'{"trips":[],"fuel":[],"cashcard":[]}');
 const today=()=>new Date().toISOString().slice(0,10);
 const money=n=>'$'+Number(n||0).toFixed(2);
@@ -359,5 +438,29 @@ function deleteTrip(id){
 
 setTimeout(()=>{try{normalizeDB(); if(typeof renderTripsList==='function')renderTripsList();}catch(e){console.warn(e)}},150);
 </script>
+
+
+
+
+<script>
+(function(){
+  const originalSetItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(k,v){
+    originalSetItem.call(this,k,v);
+    if(k==="driverEarningsV1"){
+      try{
+        const parsed=JSON.parse(v);
+        const hasData=(parsed.trips?.length||0)+(parsed.fuel?.length||0)+(parsed.cashcard?.length||0)>0;
+        if(hasData){
+          originalSetItem.call(this,"driverEarningsBackupV13",v);
+          originalSetItem.call(this,"driverEarningsBackupV13_2",v);
+        }
+      }catch(e){}
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
+
