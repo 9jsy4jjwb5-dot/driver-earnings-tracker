@@ -81,14 +81,6 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div id="cashList" class="card" style="margin-top:12px"></div>
   <button class="btn danger wide" style="margin-top:12px" onclick="clearData()">Delete All Data</button>
 <div class="card" style="margin-top:16px;"><div class="section-title" style="font-size:22px;margin-bottom:6px;">💾 Data Backup</div><div id="backupStatusV15" class="small" style="margin-bottom:12px;">Saved: checking…</div><div class="small" style="margin-bottom:12px;">Export your records before updating the app. Empty data cannot overwrite a saved backup.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn alt" type="button" onclick="exportBackup()">📤 Export Backup</button><label class="btn alt" style="cursor:pointer;">📥 Import Backup<input type="file" accept=".json,application/json" style="display:none" onchange="importBackupFile(this.files[0])"></label></div></div>
-<div class="card" style="margin-top:16px;">
-  <div class="section-title" style="font-size:22px;margin-bottom:6px;">💾 Data Backup</div>
-  <div class="small" style="margin-bottom:12px;">Export your records before updating the app. Import the backup later if needed.</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button class="btn alt" type="button" onclick="exportBackup()">📤 Export Backup</button>
-    <label class="btn alt" style="cursor:pointer;">📥 Import Backup<input type="file" accept=".json,application/json" style="display:none" onchange="importBackupFile(this.files[0])"></label>
-  </div>
-</div>
 </section>
 
 <section id="formPage" class="page">
