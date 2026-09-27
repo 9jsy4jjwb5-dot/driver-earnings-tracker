@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V17 Recovery</title>
+<title>Driver Earnings Tracker V18 Recovery</title>
 <meta name="app-version" content="17">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -133,35 +133,47 @@ function updateBackupStatus(source){
 function saveNonEmptyBackup(){try{const b=bestSavedDB();if(b){const raw=JSON.stringify(b.data);localStorage.setItem(BACKUP_KEY,raw);localStorage.setItem(BACKUP_KEY_2,raw);}}catch(e){}}
 function restoreNonEmptyBackup(){const b=bestSavedDB();if(!b)return false; try{localStorage.setItem(KEY,JSON.stringify(b.data));db=b.data;updateBackupStatus(b.key);return true;}catch(e){return false;}}
 function recoverSavedRecords(){
+  const b=bestSavedDB();
+  if(!b){
+    updateBackupStatus('No non-empty saved record set was found');
+    alert('No non-empty saved records were found in this browser. Do not clear Safari website data.');
+    return false;
+  }
+  const raw=JSON.stringify(b.data);
   try{
-    const b=bestSavedDB();
-    if(!b){ updateBackupStatus('No non-empty saved record set was found'); alert('No non-empty saved records were found in this browser. Do not clear Safari website data.'); return false; }
-    localStorage.setItem(KEY,JSON.stringify(b.data));
-    localStorage.setItem(BACKUP_KEY,JSON.stringify(b.data));
-    localStorage.setItem(BACKUP_KEY_2,JSON.stringify(b.data));
-    db=b.data;
-    renderAll();
-    if(typeof renderFuelReport==='function')renderFuelReport('all');
-    updateBackupStatus(b.key);
-    alert(`Recovered ${b.data.trips.length} trip(s) and ${b.data.fuel.length} fuel refill(s).`);
-    openPage('trips');
-    return true;
-  }catch(e){alert('Recovery failed. Your saved browser data was not intentionally cleared.'); return false;}
+    // Recovery itself must not depend on any screen rendering.
+    localStorage.setItem(KEY,raw);
+  }catch(e){
+    alert('Safari would not allow the recovered data to be written back. Your saved data was not intentionally cleared.');
+    return false;
+  }
+  try{ localStorage.setItem(BACKUP_KEY,raw); }catch(e){}
+  try{ localStorage.setItem(BACKUP_KEY_2,raw); }catch(e){}
+  db=b.data;
+  updateBackupStatus(b.key);
+  alert(`Recovered ${b.data.trips.length} trip(s) and ${b.data.fuel.length} fuel refill(s). The app will now reload.`);
+  // Reload so the normal app starts from the recovered main database.
+  setTimeout(()=>location.reload(),50);
+  return true;
 }
 function exportBestBackup(){
+  const b=bestSavedDB();
+  if(!b){alert('No saved records found to export.');return;}
   try{
-    const b=bestSavedDB();
-    if(!b){alert('No saved records found to export.');return;}
     const raw=JSON.stringify(b.data,null,2);
-    localStorage.setItem(KEY,JSON.stringify(b.data));
-    localStorage.setItem(BACKUP_KEY,JSON.stringify(b.data));
-    localStorage.setItem(BACKUP_KEY_2,JSON.stringify(b.data));
+    // Export directly from the best saved copy. Rendering is not involved.
     const blob=new Blob([raw],{type:'application/json'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download='driver-earnings-backup-'+new Date().toISOString().slice(0,10)+'.json';
-    a.style.display='none'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-    updateBackupStatus(b.key); alert('Backup export started.');
-  }catch(e){alert('Could not export the saved records.');}
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='driver-earnings-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    updateBackupStatus(b.key);
+  }catch(e){alert('Could not export the saved records from this browser.');}
 }
 function exportBackup(){return exportBestBackup();}
 function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=function(){try{const parsed=JSON.parse(reader.result);const clean=cleanDB(parsed);if(recordCount(clean)===0){alert('This backup contains no records, so nothing was imported.');return;}localStorage.setItem(KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY_2,JSON.stringify(clean));db=clean;renderAll();if(typeof renderFuelReport==='function')renderFuelReport('all');updateBackupStatus('imported backup');alert('Backup imported successfully.');openPage('trips');}catch(e){alert('Invalid backup file.');}};reader.readAsText(file);}
