@@ -306,21 +306,30 @@ function fuelMetrics(records, startDate=null, endDate=null){
 
 
 function normalizeDB(){
-  const keys=['driverEarningsDB','driver_earnings_db','driverEarnings','earningsDB'];
-  let raw=null;
-  for(const k of keys){
-    try{ raw=localStorage.getItem(k); if(raw){ break; }}catch(e){}
-  }
-  if(!raw) return;
-  try{
-    const old=JSON.parse(raw);
-    const candidate=old.data||old.db||old;
-    if(!candidate || typeof candidate!=='object') return;
-    db.trips=Array.isArray(db.trips)&&db.trips.length?db.trips:(Array.isArray(candidate.trips)?candidate.trips:[]);
-    db.fuel=Array.isArray(db.fuel)&&db.fuel.length?db.fuel:(Array.isArray(candidate.fuel)?candidate.fuel:[]);
-    db.cash=Array.isArray(db.cash)&&db.cash.length?db.cash:(Array.isArray(candidate.cash)?candidate.cash:(Array.isArray(candidate.cashcard)?candidate.cashcard:[]));
-    if(typeof saveDB==='function' && recordCount(db)>0) saveDB();
-  }catch(e){ console.warn('Data migration skipped',e); }
+  // Normalize recovered records before rendering. Older backups may contain numeric
+  // values as strings, which can break arithmetic/rendering and make all lists appear empty.
+  const src = db || {trips:[],fuel:[],cashcard:[]};
+  const tripSrc = Array.isArray(src.trips)?src.trips:[];
+  const fuelSrc = Array.isArray(src.fuel)?src.fuel:[];
+  const cashSrc = Array.isArray(src.cashcard)?src.cashcard:(Array.isArray(src.cash)?src.cash:[]);
+  db.trips = tripSrc.map((x,i)=>({
+    ...x, id:x.id ?? ('trip-'+i+'-'+Date.now()), date:x.date||'', time:x.time||'',
+    distance:Number(x.distance ?? x.dist ?? 0)||0, price:Number(x.price ?? x.earning ?? 0)||0,
+    erp:Number(x.erp ?? 0)||0, waiting:Number(x.waiting ?? x.wait ?? 0)||0,
+    cancel:Number(x.cancel ?? x.cancellation ?? 0)||0
+  }));
+  db.fuel = fuelSrc.map((x,i)=>({
+    ...x, id:x.id ?? ('fuel-'+i+'-'+Date.now()), date:x.date||'', time:x.time||'',
+    odo:Number(x.odo ?? x.odometer ?? 0)||0, litres:Number(x.litres ?? x.liter ?? 0)||0,
+    pp:Number(x.pp ?? x.pricePerLitre ?? x.price ?? 0)||0, discount:Number(x.discount ?? 0)||0,
+    paid:Number(x.paid ?? x.amount ?? 0)||0
+  }));
+  db.cashcard = cashSrc.map((x,i)=>({
+    ...x, id:x.id ?? ('cash-'+i+'-'+Date.now()), date:x.date||'',
+    amount:Number(x.amount ?? x.topup ?? 0)||0
+  }));
+  // Only write back a non-empty normalized database. Never replace good data with empty data.
+  if(recordCount(db)>0){ try{ saveDB(); }catch(e){ console.warn('Normalized save failed',e); } }
 }
 
 function renderDashboard(){
@@ -377,7 +386,14 @@ function renderReports(){
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
 function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
-function renderAll(){document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});renderDashboard();renderTrips();renderFuel();renderCash();renderReports()}
+function renderAll(){
+  try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
+  try{renderDashboard();}catch(e){console.warn('Dashboard render failed',e)}
+  try{renderTrips();}catch(e){console.warn('Trips render failed',e)}
+  try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
+  try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
+  try{renderReports();}catch(e){console.warn('Reports render failed',e)}
+}
 // Recovery-first startup: update backup status BEFORE rendering the normal app.
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
 try{ restoreIfMainKeyMissing(); }catch(e){}
@@ -472,7 +488,7 @@ function deleteTrip(id){
 }
 
 
-try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery migration skipped',e)}
+try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
