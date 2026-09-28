@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V18 Recovery</title>
-<meta name="app-version" content="17">
+<title>Driver Earnings Tracker V21 Recovery</title>
+<meta name="app-version" content="21">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -346,28 +346,33 @@ function renderDashboard(){
  document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Total fuel purchased',fuelLit.toFixed(2)+' L'],['Fuel used for efficiency',intervalLitresText],['Distance covered for efficiency',fm.ready?fm.distance.toFixed(1)+' km':'—'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function renderTrips(){
- const el=document.getElementById('tripList');
- if(!db.trips.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return}
- const rows=[...db.trips].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
- const totalDist=rows.reduce((a,x)=>a+(+x.distance||0),0);
- const totalIncome=rows.reduce((a,x)=>a+(+x.price||0)+(+x.waiting||0)+(+x.cancel||0),0);
- el.innerHTML=`<div class="card" style="margin-bottom:10px"><div class="small">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total income: <b>${money(totalIncome)}</b></div></div>`+
- rows.map((x)=>`<div class="item">
-   <div>
-     <b>${fmtDate(x.date)}${x.time?' · '+x.time:''}</b><br>
-     <span class="small">${(+x.distance||0).toFixed(1)} km · Trip ${money(x.price)} · ${x.distance?money(x.price/x.distance)+'/km':'—'}</span><br>
-     <span class="small">ERP ${money(x.erp)} · Waiting ${money(x.waiting)} · Cancellation ${money(x.cancel)}</span>
-   </div>
-   <div style="text-align:right">
-     <b>${money((+x.price||0)+(+x.waiting||0)+(+x.cancel||0))}</b><br>
-     <button onclick="openForm('trip','${x.id}')">Edit</button>
-     <button onclick="del('trips','${x.id}')">Delete</button>
-   </div>
- </div>`).join('');
+ const el=document.getElementById('tripList'); if(!el)return;
+ const rows=Array.isArray(db.trips)?db.trips.slice():[];
+ if(!rows.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return;}
+ rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.time||'').localeCompare(String(a.time||'')));
+ const totalDist=rows.reduce((a,x)=>a+(Number(x.distance)||0),0);
+ const totalIncome=rows.reduce((a,x)=>a+(Number(x.price)||0)+(Number(x.waiting)||0)+(Number(x.cancel)||0),0);
+ let html='<div class="small" style="margin-bottom:12px">Trip records: <b>'+rows.length+'</b> · Total distance: <b>'+totalDist.toFixed(1)+' km</b> · Total income: <b>'+money(totalIncome)+'</b></div>';
+ rows.forEach((x,i)=>{
+   const dist=Number(x.distance)||0, price=Number(x.price)||0, erp=Number(x.erp)||0, wait=Number(x.waiting)||0, can=Number(x.cancel)||0;
+   const date=x.date?fmtDate(String(x.date)):'';
+   const id=String(x.id ?? ('trip-'+i));
+   html+='<div class="item"><div><b>'+date+(x.time?' · '+String(x.time):'')+'</b><br><span class="small">'+dist.toFixed(1)+' km · Trip '+money(price)+' · '+(dist?money(price/dist)+'/km':'—')+'</span><br><span class="small">ERP '+money(erp)+' · Waiting '+money(wait)+' · Cancellation '+money(can)+'</span></div><div style="text-align:right"><b>'+money(price+wait+can-erp)+'</b><br><button type="button" onclick="openForm(\'trip\',\''+id.replace(/'/g,"&#39;")+"\')">Edit</button> <button type="button" onclick="del(\'trips\',\''+id.replace(/'/g,"&#39;")+"\')">Delete</button></div></div>';
+ });
+ el.innerHTML=html;
 }
 function renderFuel(){
- const el=document.getElementById('fuelList'); if(!db.fuel.length){el.innerHTML='<div class="empty">No fuel refills recorded yet.</div>';return}
- el.innerHTML=[...db.fuel].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b><br><span class="small">${Number(x.odo||0).toLocaleString()} km · ${x.litres.toFixed(2)} L · ${money(x.pp)}/L · ${x.discount}% discount</span></div><div><b>${money(x.paid)}</b><br><button onclick="openForm('fuel','${x.id}')">Edit</button> <button onclick="del('fuel','${x.id}')">Delete</button></div></div>`).join('');
+ const el=document.getElementById('fuelList'); if(!el)return;
+ const rows=Array.isArray(db.fuel)?db.fuel.slice():[];
+ if(!rows.length){el.innerHTML='<div class="empty">No fuel refills recorded yet.</div>';return;}
+ rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ let html='';
+ rows.forEach((x,i)=>{
+   const odo=Number(x.odo)||0, litres=Number(x.litres)||0, pp=Number(x.pp)||0, discount=Number(x.discount)||0, paid=Number(x.paid)||0;
+   const date=x.date?fmtDate(String(x.date)):''; const id=String(x.id ?? ('fuel-'+i));
+   html+='<div class="item"><div><b>'+date+'</b><br><span class="small">'+odo.toLocaleString()+' km · '+litres.toFixed(2)+' L · '+money(pp)+'/L · '+discount+'% discount</span></div><div><b>'+money(paid)+'</b><br><button type="button" onclick="openForm(\'fuel\',\''+id.replace(/'/g,"&#39;")+"\')">Edit</button> <button type="button" onclick="del(\'fuel\',\''+id.replace(/'/g,"&#39;")+"\')">Delete</button></div></div>';
+ });
+ el.innerHTML=html;
 }
 function renderCash(){
  const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
@@ -397,6 +402,7 @@ function renderAll(){
 // Recovery-first startup: update backup status BEFORE rendering the normal app.
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
 try{ restoreIfMainKeyMissing(); }catch(e){}
+try{ normalizeDB(); }catch(e){ console.warn('Normalization failed',e); }
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
 try{ renderAll(); }catch(e){ console.warn('Normal app render failed; recovery controls remain active',e); }
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
@@ -436,7 +442,7 @@ document.addEventListener('click',e=>{
   document.querySelectorAll('.periodBtn').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); renderFuelReport(b.dataset.period);
 });
-setTimeout(()=>renderFuelReport('day'),100);
+setTimeout(()=>{ try{renderTrips();renderFuel();renderFuelReport('day');}catch(e){console.warn('Final list render failed',e);} },100);
 
 
 function renderTripsList(){
