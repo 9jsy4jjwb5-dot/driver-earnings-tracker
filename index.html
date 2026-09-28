@@ -101,6 +101,11 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 <script>
 const KEY="driverEarningsV1";
 
+// Core helpers required by all screens.
+const today=()=>new Date().toISOString().slice(0,10);
+const money=n=>'$'+Number(n||0).toFixed(2);
+
+
 
 
 const BACKUP_KEY="driverEarningsBackupV15";
