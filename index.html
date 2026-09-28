@@ -357,12 +357,12 @@ function renderTrips(){
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.time||'').localeCompare(String(a.time||'')));
  const totalDist=rows.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const totalIncome=rows.reduce((a,x)=>a+(Number(x.price)||0)+(Number(x.waiting)||0)+(Number(x.cancel)||0),0);
- let html='<div class="small" style="margin-bottom:12px">Trip records: <b>'+rows.length+'</b> · Total distance: <b>'+totalDist.toFixed(1)+' km</b> · Total income: <b>'+money(totalIncome)+'</b></div>';
+ let html=`<div class="small" style="margin-bottom:12px">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total income: <b>${money(totalIncome)}</b></div>`;
  rows.forEach((x,i)=>{
    const dist=Number(x.distance)||0, price=Number(x.price)||0, erp=Number(x.erp)||0, wait=Number(x.waiting)||0, can=Number(x.cancel)||0;
    const date=x.date?fmtDate(String(x.date)):'';
    const id=String(x.id ?? ('trip-'+i));
-   html+='<div class="item"><div><b>'+date+(x.time?' · '+String(x.time):'')+'</b><br><span class="small">'+dist.toFixed(1)+' km · Trip '+money(price)+' · '+(dist?money(price/dist)+'/km':'—')+'</span><br><span class="small">ERP '+money(erp)+' · Waiting '+money(wait)+' · Cancellation '+money(can)+'</span></div><div style="text-align:right"><b>'+money(price+wait+can-erp)+'</b><br><button type="button" onclick="openForm(\'trip\',\''+id.replace(/'/g,"&#39;")+"\')">Edit</button> <button type="button" onclick="del(\'trips\',\''+id.replace(/'/g,"&#39;")+"\')">Delete</button></div></div>';
+   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>${money(price+wait+can-erp)}</b><br><button type="button" onclick="openForm('trip',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('trips',${JSON.stringify(id)})">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
@@ -375,7 +375,7 @@ function renderFuel(){
  rows.forEach((x,i)=>{
    const odo=Number(x.odo)||0, litres=Number(x.litres)||0, pp=Number(x.pp)||0, discount=Number(x.discount)||0, paid=Number(x.paid)||0;
    const date=x.date?fmtDate(String(x.date)):''; const id=String(x.id ?? ('fuel-'+i));
-   html+='<div class="item"><div><b>'+date+'</b><br><span class="small">'+odo.toLocaleString()+' km · '+litres.toFixed(2)+' L · '+money(pp)+'/L · '+discount+'% discount</span></div><div><b>'+money(paid)+'</b><br><button type="button" onclick="openForm(\'fuel\',\''+id.replace(/'/g,"&#39;")+"\')">Edit</button> <button type="button" onclick="del(\'fuel\',\''+id.replace(/'/g,"&#39;")+"\')">Delete</button></div></div>';
+   html+=`<div class="item"><div><b>${date}</b><br><span class="small">${odo.toLocaleString()} km · ${litres.toFixed(2)} L · ${money(pp)}/L · ${discount}% discount</span></div><div><b>${money(paid)}</b><br><button type="button" onclick="openForm('fuel',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('fuel',${JSON.stringify(id)})">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
@@ -450,56 +450,8 @@ document.addEventListener('click',e=>{
 setTimeout(()=>{ try{renderTrips();renderFuel();renderFuelReport('day');}catch(e){console.warn('Final list render failed',e);} },100);
 
 
-function renderTripsList(){
-  const host=document.getElementById('tripList')||document.getElementById('tripsList')||document.querySelector('[data-trip-list]');
-  if(!host) return;
-  const rows=Array.isArray(db.trips)?db.trips.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')):[];
-
-  if(!rows.length){
-    host.innerHTML='<div class="card"><div class="label">Trips</div><div class="value">No trips recorded</div><div class="small">Tap + Add Trip to enter your first trip.</div></div>';
-    return;
-  }
-
-  host.innerHTML=rows.map((x,i)=>{
-    const dist=+x.distance||+x.dist||0;
-    const price=+x.price||+x.earning||0;
-    const erp=+x.erp||0, wait=+x.wait||+x.waiting||0, can=+x.can||+x.cancellation||0;
-    const perKm=dist?price/dist:0;
-    const id=x.id??i;
-    return `<div class="card" style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;gap:10px">
-        <div><div style="font-weight:800">${x.date||''} ${x.time||''}</div>
-        <div class="small">${dist.toFixed(1)} km · ${money(price)} · ${money(perKm)}/km</div></div>
-        <div style="font-weight:800">${money(price+wait+can-erp)}</div>
-      </div>
-      <div class="small" style="margin-top:8px">ERP ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="editTrip(${JSON.stringify(id)})">Edit</button>
-        <button onclick="deleteTrip(${JSON.stringify(id)})">Delete</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-function editTrip(id){
-  const x=db.trips.find((t,i)=>(t.id??i)==id);
-  if(!x) return;
-  // Use the existing edit flow when available.
-  if(typeof openTripForm==='function'){ openTripForm(x); return; }
-  if(typeof showTripForm==='function'){ showTripForm(x); return; }
-  alert('Trip selected. The edit form will be connected in the next UI update.');
-}
-function deleteTrip(id){
-  const i=db.trips.findIndex((t,idx)=>(t.id??idx)==id);
-  if(i<0) return;
-  if(!confirm('Delete this trip?')) return;
-  db.trips.splice(i,1);
-  if(typeof saveDB==='function') saveDB();
-  renderTripsList();
-  if(typeof renderDashboard==='function') renderDashboard();
-}
-
-
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
+try{renderAll();renderFuelReport('all');}catch(e){console.warn('Final V23 refresh skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
