@@ -218,9 +218,6 @@ function syncFromStorage(){
   return db;
 }
 
-function today(){ return new Date().toISOString().slice(0,10); }
-function money(v){ return '$'+(Number(v)||0).toFixed(2); }
-function sameId(a,b){ return String(a ?? '')===String(b ?? ''); }
 function fmtDate(s){return new Date(s+'T00:00:00').toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'})}
 function openPage(id){
  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active')); document.getElementById(id).classList.add('active');
@@ -228,11 +225,10 @@ function openPage(id){
 }
 document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>openPage(b.dataset.page));
 
-function editRecord(type,id){ try{ openForm(type,String(id)); }catch(e){ console.error('Edit failed',e); alert('Edit could not be opened. Please try again.'); } }
 function openForm(type, editId=null){
  openPage('formPage');
  const f=document.getElementById('entryForm'); let title='';
- const existing=editId ? (db[type]||[]).find(x=>sameId(x.id,editId)) : null;
+ const existing=editId ? db[type].find(x=>x.id===editId) : null;
  if(type==='trip'){
    const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0};
    title=existing?'Edit Trip':'Add Trip';
@@ -285,7 +281,7 @@ function openForm(type, editId=null){
      const data={date:date.value,amount:+amount.value};
      if(existing) Object.assign(existing,data); else db.cashcard.push({id:crypto.randomUUID(),...data});
    }
-   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more'); renderAll();
+   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more');
  };
 }
 
@@ -315,8 +311,6 @@ function fuelMetrics(records, startDate=null, endDate=null){
 
 
 function normalizeDB(){
-  // Normalize IDs so Edit/Delete work even with recovered legacy records.
-  for(const type of ['trips','fuel','cashcard']){ if(Array.isArray(db[type])) db[type]=db[type].map((x,i)=>({...x,id:String(x.id ?? (type+'-'+i))})); }
   // Normalize recovered records before rendering. Older backups may contain numeric
   // values as strings, which can break arithmetic/rendering and make all lists appear empty.
   const src = db || {trips:[],fuel:[],cashcard:[]};
@@ -369,7 +363,7 @@ function renderTrips(){
    const date=x.date?fmtDate(String(x.date)):'';
    const id=String(x.id ?? ('trip-'+i));
    const totalEarnings=price+wait+can, afterMedisave=totalEarnings*0.91;
-   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP reimbursed ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>Total ${money(totalEarnings)}</b><br><span class="small">After 9%: ${money(afterMedisave)}</span><br><button type="button" onclick="editRecord('trip',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('trips',${JSON.stringify(id)})">Delete</button></div></div>`;
+   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP reimbursed ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>Total ${money(totalEarnings)}</b><br><span class="small">After 9%: ${money(afterMedisave)}</span><br><button type="button" onclick="openForm('trip',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('trips',${JSON.stringify(id)})">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
@@ -382,7 +376,7 @@ function renderFuel(){
  rows.forEach((x,i)=>{
    const odo=Number(x.odo)||0, litres=Number(x.litres)||0, pp=Number(x.pp)||0, discount=Number(x.discount)||0, paid=Number(x.paid)||0;
    const date=x.date?fmtDate(String(x.date)):''; const id=String(x.id ?? ('fuel-'+i));
-   html+=`<div class="item"><div><b>${date}</b><br><span class="small">${odo.toLocaleString()} km · ${litres.toFixed(2)} L · ${money(pp)}/L · ${discount}% discount</span></div><div><b>${money(paid)}</b><br><button type="button" onclick="editRecord('fuel',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('fuel',${JSON.stringify(id)})">Delete</button></div></div>`;
+   html+=`<div class="item"><div><b>${date}</b><br><span class="small">${odo.toLocaleString()} km · ${litres.toFixed(2)} L · ${money(pp)}/L · ${discount}% discount</span></div><div><b>${money(paid)}</b><br><button type="button" onclick="openForm('fuel',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('fuel',${JSON.stringify(id)})">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
@@ -401,7 +395,7 @@ function renderReports(){
  const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Medisave Deducted (9%)',money(medisave)],['Earnings After Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
-function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>!sameId(x.id,id));save();renderAll()}}
+function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
 function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
 function renderAll(){
   try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
