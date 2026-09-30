@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V21 Recovery</title>
-<meta name="app-version" content="21">
+<title>Driver Earnings Tracker V24</title>
+<meta name="app-version" content="24">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -340,8 +340,8 @@ function normalizeDB(){
 function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
  const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
- const income=price+wait+can, net=income-erp;
- const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Trip earnings',money(price)],['Waiting + cancellation',money(wait+can)],['ERP',money(erp)],['Fuel paid',money(fuel)],['Net earnings',money(net)],['CashCard top-ups',money(top)]];
+ const income=price+wait+can, medisave=income*0.09, afterMedisave=income-medisave;
+ const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
  const fm=fuelMetrics(db.fuel,d,d);
@@ -357,12 +357,13 @@ function renderTrips(){
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.time||'').localeCompare(String(a.time||'')));
  const totalDist=rows.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const totalIncome=rows.reduce((a,x)=>a+(Number(x.price)||0)+(Number(x.waiting)||0)+(Number(x.cancel)||0),0);
- let html=`<div class="small" style="margin-bottom:12px">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total income: <b>${money(totalIncome)}</b></div>`;
+ let html=`<div class="small" style="margin-bottom:12px">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total Earnings: <b>${money(totalIncome)}</b></div>`;
  rows.forEach((x,i)=>{
    const dist=Number(x.distance)||0, price=Number(x.price)||0, erp=Number(x.erp)||0, wait=Number(x.waiting)||0, can=Number(x.cancel)||0;
    const date=x.date?fmtDate(String(x.date)):'';
    const id=String(x.id ?? ('trip-'+i));
-   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>${money(price+wait+can-erp)}</b><br><button type="button" onclick="openForm('trip',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('trips',${JSON.stringify(id)})">Delete</button></div></div>`;
+   const totalEarnings=price+wait+can, afterMedisave=totalEarnings*0.91;
+   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP reimbursed ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>Total ${money(totalEarnings)}</b><br><span class="small">After 9%: ${money(afterMedisave)}</span><br><button type="button" onclick="openForm('trip',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('trips',${JSON.stringify(id)})">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
@@ -390,8 +391,8 @@ function renderReports(){
  const inRange=x=>new Date(x.date+'T23:59:59')>=start;
  const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
  const dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), fees=t.reduce((a,x)=>a+x.waiting+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=f.reduce((a,x)=>a+x.paid,0), top=c.reduce((a,x)=>a+x.amount,0);
- const income=price+fees, net=income-erp;
- const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Income',money(income)],['ERP',money(erp)],['Net earnings',money(net)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
+ const income=price+fees, medisave=income*0.09, afterMedisave=income-medisave;
+ const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Medisave Deducted (9%)',money(medisave)],['Earnings After Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
