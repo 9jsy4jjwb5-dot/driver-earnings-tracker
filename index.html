@@ -363,7 +363,7 @@ function renderTrips(){
    const date=x.date?fmtDate(String(x.date)):'';
    const id=String(x.id ?? ('trip-'+i));
    const totalEarnings=price+wait+can, afterMedisave=totalEarnings*0.91;
-   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP reimbursed ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>Total ${money(totalEarnings)}</b><br><span class="small">After 9%: ${money(afterMedisave)}</span><br><button type="button" onclick="openForm('trip',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('trips',${JSON.stringify(id)})">Delete</button></div></div>`;
+   html+=`<div class="item"><div><b>${date}${x.time?' · '+String(x.time):''}</b><br><span class="small">${dist.toFixed(1)} km · Trip ${money(price)} · ${dist?money(price/dist)+'/km':'—'}</span><br><span class="small">ERP reimbursed ${money(erp)} · Waiting ${money(wait)} · Cancellation ${money(can)}</span></div><div style="text-align:right"><b>Total ${money(totalEarnings)}</b><br><span class="small">After 9%: ${money(afterMedisave)}</span><br><button type="button" class="editBtn" data-type="trip" data-id="${id}">Edit</button> <button type="button" class="deleteBtn" data-type="trips" data-id="${id}">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
@@ -376,13 +376,13 @@ function renderFuel(){
  rows.forEach((x,i)=>{
    const odo=Number(x.odo)||0, litres=Number(x.litres)||0, pp=Number(x.pp)||0, discount=Number(x.discount)||0, paid=Number(x.paid)||0;
    const date=x.date?fmtDate(String(x.date)):''; const id=String(x.id ?? ('fuel-'+i));
-   html+=`<div class="item"><div><b>${date}</b><br><span class="small">${odo.toLocaleString()} km · ${litres.toFixed(2)} L · ${money(pp)}/L · ${discount}% discount</span></div><div><b>${money(paid)}</b><br><button type="button" onclick="openForm('fuel',${JSON.stringify(id)})">Edit</button> <button type="button" onclick="del('fuel',${JSON.stringify(id)})">Delete</button></div></div>`;
+   html+=`<div class="item"><div><b>${date}</b><br><span class="small">${odo.toLocaleString()} km · ${litres.toFixed(2)} L · ${money(pp)}/L · ${discount}% discount</span></div><div><b>${money(paid)}</b><br><button type="button" class="editBtn" data-type="fuel" data-id="${id}">Edit</button> <button type="button" class="deleteBtn" data-type="fuel" data-id="${id}">Delete</button></div></div>`;
  });
  el.innerHTML=html;
 }
 function renderCash(){
  const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
- el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button onclick="openForm('cashcard','${x.id}')">Edit</button> <button onclick="del('cashcard','${x.id}')">Delete</button></div></div>`).join('');
+ el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button type="button" class="editBtn" data-type="cashcard" data-id="${x.id}">Edit</button> <button type="button" class="deleteBtn" data-type="cashcard" data-id="${x.id}">Delete</button></div></div>`).join('');
 }
 function renderReports(){
  const p=document.getElementById('period').value, now=new Date(), start=new Date(now);
@@ -396,6 +396,24 @@ function renderReports(){
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
+
+// Safe edit/delete click handling. Uses event delegation so dynamically-rendered
+// buttons work reliably on iPhone Safari without inline JavaScript handlers.
+document.addEventListener('click',function(e){
+  const edit=e.target.closest('.editBtn');
+  if(edit){
+    e.preventDefault();
+    const type=edit.dataset.type, id=edit.dataset.id;
+    if(type && id) openForm(type,id);
+    return;
+  }
+  const delBtn=e.target.closest('.deleteBtn');
+  if(delBtn){
+    e.preventDefault();
+    const type=delBtn.dataset.type, id=delBtn.dataset.id;
+    if(type && id) del(type,id);
+  }
+});
 function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
 function renderAll(){
   try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
