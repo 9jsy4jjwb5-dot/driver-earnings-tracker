@@ -228,7 +228,11 @@ document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>openPage(b.dataset
 function openForm(type, editId=null){
  openPage('formPage');
  const f=document.getElementById('entryForm'); let title='';
- const existing=editId ? db[type].find(x=>String(x.id)===String(editId)) : null;
+ const existing=editId ? (
+    type==='trip'
+      ? db.trips.find(x=>String(x.id)===String(editId))
+      : db[type].find(x=>String(x.id)===String(editId))
+  ) : null;
  if(type==='trip'){
    const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0};
    title=existing?'Edit Trip':'Add Trip';
