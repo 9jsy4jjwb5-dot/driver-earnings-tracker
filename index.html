@@ -228,7 +228,7 @@ document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>openPage(b.dataset
 function openForm(type, editId=null){
  openPage('formPage');
  const f=document.getElementById('entryForm'); let title='';
- const existing=editId ? db[type].find(x=>x.id===editId) : null;
+ const existing=editId ? db[type].find(x=>String(x.id)===String(editId)) : null;
  if(type==='trip'){
    const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0};
    title=existing?'Edit Trip':'Add Trip';
@@ -367,6 +367,12 @@ function renderTrips(){
  });
  el.innerHTML=html;
 }
+document.addEventListener('click',function(e){
+ const edit=e.target.closest('.editBtn');
+ if(edit){ e.preventDefault(); openForm(edit.dataset.type, edit.dataset.id); return; }
+ const delBtn=e.target.closest('.deleteBtn');
+ if(delBtn){ e.preventDefault(); del(delBtn.dataset.type, delBtn.dataset.id); return; }
+});
 function renderFuel(){
  const el=document.getElementById('fuelList'); if(!el)return;
  const rows=Array.isArray(db.fuel)?db.fuel.slice():[];
@@ -395,7 +401,7 @@ function renderReports(){
  const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Medisave Deducted (9%)',money(medisave)],['Earnings After Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
-function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>x.id!==id);save()}}
+function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>String(x.id)!==String(id));save();renderAll()}}
 
 // Safe edit/delete click handling. Uses event delegation so dynamically-rendered
 // buttons work reliably on iPhone Safari without inline JavaScript handlers.
