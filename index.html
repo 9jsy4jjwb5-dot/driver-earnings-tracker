@@ -396,13 +396,47 @@ function renderCash(){
 }
 function renderReports(){
  const p=document.getElementById('period').value, now=new Date(), start=new Date(now);
- if(p==='day')start.setHours(0,0,0,0); if(p==='week'){let day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0)} if(p==='month'){start.setDate(1);start.setHours(0,0,0,0)} if(p==='all')start.setFullYear(2000);
+ if(p==='day')start.setHours(0,0,0,0);
+ if(p==='week'){let day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0)}
+ if(p==='month'){start.setDate(1);start.setHours(0,0,0,0)}
+ if(p==='all')start.setFullYear(2000);
  const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
- const inRange=x=>new Date(x.date+'T23:59:59')>=start;
+ const inRange=x=>x.date && new Date(x.date+'T23:59:59')>=start && new Date(x.date+'T00:00:00')<=now;
  const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
- const dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), fees=t.reduce((a,x)=>a+x.waiting+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=f.reduce((a,x)=>a+x.paid,0), top=c.reduce((a,x)=>a+x.amount,0);
- const income=price+fees, medisave=income*0.09, afterMedisave=income-medisave;
- const litres=f.reduce((a,x)=>a+x.litres,0), fm=fuelMetrics(db.fuel,startStr,endStr), fuelEff=fm.ready?fm.efficiency:null, fuelCostKm=fm.ready?fm.costKm:null, avgFuelPrice=litres?fuel/litres:0; const cells=[['Trips',t.length],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Medisave Deducted (9%)',money(medisave)],['Earnings After Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['Fuel efficiency',fuelEff!==null?fuelEff.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fuelCostKm!==null?money(fuelCostKm):'Add 2+ odometer refills'],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]];
+ const trips=t.length;
+ const dist=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
+ const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
+ const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
+ const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+ const erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
+ const totalEarnings=tripIncome+waiting+cancellation;
+ const medisave=totalEarnings*0.09;
+ const afterMedisave=totalEarnings-medisave;
+ const avgPrice=trips?tripIncome/trips:0;
+ const avgDistance=trips?dist/trips:0;
+ const avgIncomeKm=dist?totalEarnings/dist:0;
+ const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0);
+ const litres=f.reduce((a,x)=>a+(Number(x.litres)||0),0);
+ const avgFuelPrice=litres?fuelPaid/litres:0;
+ const top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
+ const fm=fuelMetrics(db.fuel,startStr,endStr);
+ const cells=[
+  ['Trips',trips],
+  ['Total distance',dist.toFixed(1)+' km'],
+  ['Trip earnings',money(tripIncome)],
+  ['Waiting fees',money(waiting)],
+  ['Cancellation fees',money(cancellation)],
+  ['Total Earnings',money(totalEarnings)],
+  ['ERP Reimbursed',money(erp)],
+  ['Medisave Deducted (9%)',money(medisave)],
+  ['Earnings After Medisave',money(afterMedisave)],
+  ['Avg price/trip',money(avgPrice)],
+  ['Avg trip distance',avgDistance.toFixed(2)+' km'],
+  ['Avg income/km',money(avgIncomeKm)],
+  ['Fuel paid',money(fuelPaid)],
+  ['Avg fuel price',money(avgFuelPrice)+'/L'],
+  ['CashCard top-ups',money(top)]
+ ];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>String(x.id)!==String(id));save();renderAll()}}
