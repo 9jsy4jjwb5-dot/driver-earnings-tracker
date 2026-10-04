@@ -39,7 +39,12 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   </div>
   <div class="section-title">Today's Summary</div>
   <div class="grid" id="summary"></div>
-  <div class="section-title">Performance</div>
+
+  <div class="section-title" style="margin-top:20px">Monthly Dashboard</div>
+  <div class="small" style="margin-bottom:10px">Current calendar month · ERP reimbursed separately</div>
+  <div class="grid" id="mainMonthlyDashboardGrid"></div>
+
+  <div class="section-title" style="margin-top:20px">Performance</div>
   <div class="grid" id="performance"></div>
 </section>
 
@@ -347,6 +352,37 @@ function normalizeDB(){
   if(recordCount(db)>0){ try{ saveDB(); }catch(e){ console.warn('Normalized save failed',e); } }
 }
 
+function renderMainMonthlyDashboard(){
+ const grid=document.getElementById('mainMonthlyDashboardGrid'); if(!grid)return;
+ const now=new Date(), start=new Date(now.getFullYear(),now.getMonth(),1);
+ const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
+ const inMonth=x=>x.date && x.date>=startStr && x.date<=endStr;
+ const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth);
+ const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
+ const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
+ const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
+ const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+ const total=tripIncome+waiting+cancellation;
+ const erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
+ const medisave=total*0.09, after=total-medisave;
+ const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0);
+ const top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
+ const netAfterFuel=after-fuelPaid;
+ const avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0;
+ const fm=fuelMetrics(db.fuel,startStr,endStr);
+ const monthName=now.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+ const cells=[
+  ['Month',monthName],['Trips',trips],['Distance',distance.toFixed(1)+' km'],
+  ['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],
+  ['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
+  ['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],
+  ['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],
+  ['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],
+  ['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]
+ ];
+ grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+}
+
 function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
  const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
@@ -492,6 +528,7 @@ function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){
 function renderAll(){
   try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
   try{renderDashboard();}catch(e){console.warn('Dashboard render failed',e)}
+  try{renderMainMonthlyDashboard();}catch(e){console.warn('Main monthly dashboard render failed',e)}
   try{renderTrips();}catch(e){console.warn('Trips render failed',e)}
   try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
   try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
@@ -545,7 +582,7 @@ setTimeout(()=>{ try{renderTrips();renderFuel();renderFuelReport('day');}catch(e
 
 
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
-try{renderAll();renderFuelReport('all');renderMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
+try{renderAll();renderFuelReport('all');renderMonthlyDashboard();renderMainMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
