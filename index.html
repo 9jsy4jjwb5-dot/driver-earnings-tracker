@@ -61,6 +61,11 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <select id="period" onchange="renderReports()"><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>
   </div>
   <div class="grid" id="reportGrid" style="margin-top:12px"></div>
+  <div class="card" style="margin-top:14px">
+    <div style="font-weight:800;font-size:20px;margin-bottom:4px">Monthly Dashboard</div>
+    <div class="small" style="margin-bottom:12px">Current calendar month. ERP is shown separately because it is reimbursed by the passenger and is not included in earnings or Medisave.</div>
+    <div class="grid" id="monthlyDashboardGrid"></div>
+  </div>
 <div class="card" style="margin-top:14px">
   <div style="font-weight:800;font-size:20px;margin-bottom:10px">Fuel Analysis</div>
   <div class="small" style="margin-bottom:12px">Total fuel purchased includes every refill in the selected period. Fuel efficiency and fuel cost/km use the fuel associated with the refill-to-refill interval and odometer distance. These are shown separately to avoid mixing purchased fuel with interval fuel usage.</div>
@@ -439,6 +444,30 @@ function renderReports(){
  ];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
+function renderMonthlyDashboard(){
+ const grid=document.getElementById('monthlyDashboardGrid'); if(!grid)return;
+ const now=new Date(), start=new Date(now.getFullYear(),now.getMonth(),1), startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
+ const inMonth=x=>x.date && x.date>=startStr && x.date<=endStr;
+ const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth);
+ const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
+ const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
+ const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
+ const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+ const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
+ const medisave=total*0.09, after=total-medisave;
+ const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
+ const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0;
+ const fm=fuelMetrics(db.fuel,startStr,endStr);
+ const monthName=now.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+ const cells=[
+  ['Month',monthName],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],
+  ['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
+  ['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],
+  ['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],
+  ['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]
+ ];
+ grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+}
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>String(x.id)!==String(id));save();renderAll()}}
 
 // Safe edit/delete click handling. Uses event delegation so dynamically-rendered
@@ -466,6 +495,7 @@ function renderAll(){
   try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
   try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
   try{renderReports();}catch(e){console.warn('Reports render failed',e)}
+  try{renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
 }
 // Recovery-first startup: update backup status BEFORE rendering the normal app.
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
@@ -514,7 +544,7 @@ setTimeout(()=>{ try{renderTrips();renderFuel();renderFuelReport('day');}catch(e
 
 
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
-try{renderAll();renderFuelReport('all');}catch(e){console.warn('Final V23 refresh skipped',e)}
+try{renderAll();renderFuelReport('all');renderMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
