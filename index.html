@@ -216,8 +216,20 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     </button>
     <div class="reportAccordionBodyV39">
       <div class="card">
-        <label class="small">Period</label>
-        <select id="period" onchange="renderReports()"><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>
+        <label class="small">Report period</label>
+        <select id="period" onchange="renderReports()">
+          <option value="day">Today</option>
+          <option value="weekSelect">Select Week</option>
+          <option value="monthSelect">Select Month</option>
+        </select>
+        <div id="reportWeekPicker" style="display:none;margin-top:10px">
+          <label class="small">Week</label>
+          <select id="reportWeek" onchange="renderReports()"></select>
+        </div>
+        <div id="reportMonthPicker" style="display:none;margin-top:10px">
+          <label class="small">Month</label>
+          <select id="reportMonth" onchange="renderReports()"></select>
+        </div>
       </div>
       <div class="grid" id="reportGrid"></div>
     </div>
@@ -357,7 +369,7 @@ function exportBestBackup(){
   }catch(e){alert('Could not export the saved records from this browser.');}
 }
 function exportBackup(){return exportBestBackup();}
-function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=function(){try{const parsed=JSON.parse(reader.result);const clean=cleanDB(parsed);if(recordCount(clean)===0){alert('This backup contains no records, so nothing was imported.');return;}localStorage.setItem(KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY_2,JSON.stringify(clean));db=clean;renderAll();if(typeof renderFuelReport==='function')renderFuelReport('all');updateBackupStatus('imported backup');alert('Backup imported successfully.');openPage('trips');}catch(e){alert('Invalid backup file.');}};reader.readAsText(file);}
+function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=function(){try{const parsed=JSON.parse(reader.result);const clean=cleanDB(parsed);if(recordCount(clean)===0){alert('This backup contains no records, so nothing was imported.');return;}localStorage.setItem(KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY_2,JSON.stringify(clean));db=clean;renderAll();if(typeof renderFuelReport==='function')renderFuelReport('month');updateBackupStatus('imported backup');alert('Backup imported successfully.');openPage('trips');}catch(e){alert('Invalid backup file.');}};reader.readAsText(file);}
 function loadDB(){
   const main=readMainDB();
   if(recordCount(main)>0) return main;
@@ -615,14 +627,57 @@ function renderCash(){
  const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
  el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button type="button" class="editBtn" data-type="cashcard" data-id="${x.id}">Edit</button> <button type="button" class="deleteBtn" data-type="cashcard" data-id="${x.id}">Delete</button></div></div>`).join('');
 }
+function reportDateKey(d){
+ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+ return `${y}-${m}-${day}`;
+}
+function reportMonthKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+function reportMonthLabel(key){
+ const [y,m]=key.split('-').map(Number);
+ return new Date(y,m-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+}
+function reportWeekInfo(key){
+ const parts=key.split('-W'), y=Number(parts[0]), w=Number(parts[1]);
+ const jan4=new Date(y,0,4); const day=jan4.getDay()||7;
+ const monday=new Date(jan4); monday.setDate(jan4.getDate()-day+1+(w-1)*7);
+ const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
+ return {start:reportDateKey(monday),end:reportDateKey(sunday),label:`${monday.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'})} – ${sunday.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'})}`};
+}
+function reportWeekKeyFromDate(dateStr){
+ const d=new Date(dateStr+'T12:00:00');
+ const day=d.getDay()||7; const th=new Date(d); th.setDate(d.getDate()+4-day);
+ const y=th.getFullYear(); const jan4=new Date(y,0,4); const janDay=jan4.getDay()||7;
+ const week=1+Math.round(((th-jan4)/86400000-(janDay-1))/7);
+ return `${y}-W${String(week).padStart(2,'0')}`;
+}
+function reportAvailableDates(){
+ return [...(db.trips||[]),...(db.fuel||[]),...(db.cashcard||[])].map(x=>x.date).filter(Boolean);
+}
+function populateReportWeekMonthSelectors(){
+ const dates=reportAvailableDates();
+ const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
+ const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
+ const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
+ if(ws){const prev=ws.value;ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(prev))ws.value=prev;}
+ if(ms){const prev=ms.value;ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(prev))ms.value=prev;}
+}
 function renderReports(){
- const p=document.getElementById('period').value, now=new Date(), start=new Date(now);
- if(p==='day')start.setHours(0,0,0,0);
- if(p==='week'){let day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0)}
- if(p==='month'){start.setDate(1);start.setHours(0,0,0,0)}
- if(p==='all')start.setFullYear(2000);
- const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
- const inRange=x=>x.date && new Date(x.date+'T23:59:59')>=start && new Date(x.date+'T00:00:00')<=now;
+ populateReportWeekMonthSelectors();
+ const p=document.getElementById('period').value, now=new Date();
+ const weekPicker=document.getElementById('reportWeekPicker'), monthPicker=document.getElementById('reportMonthPicker');
+ if(weekPicker)weekPicker.style.display=p==='weekSelect'?'block':'none';
+ if(monthPicker)monthPicker.style.display=p==='monthSelect'?'block':'none';
+ let start=new Date(now), end=new Date(now);
+ if(p==='day'){start.setHours(0,0,0,0);end.setHours(23,59,59,999);}
+ else if(p==='weekSelect'){
+   const info=reportWeekInfo(document.getElementById('reportWeek')?.value || reportWeekKeyFromDate(reportDateKey(now)));
+   start=new Date(info.start+'T00:00:00'); end=new Date(info.end+'T23:59:59');
+ } else if(p==='monthSelect'){
+   const key=document.getElementById('reportMonth')?.value || reportMonthKey(now); const [y,m]=key.split('-').map(Number);
+   start=new Date(y,m-1,1); end=new Date(y,m,0,23,59,59);
+ }
+ const startStr=reportDateKey(start), endStr=reportDateKey(end);
+ const inRange=x=>x.date && x.date>=startStr && x.date<=endStr;
  const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
  const trips=t.length;
  const dist=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
@@ -642,24 +697,15 @@ function renderReports(){
  const top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
  const fm=fuelMetrics(db.fuel,startStr,endStr);
  const cells=[
-  ['Trips',trips],
-  ['Total distance',dist.toFixed(1)+' km'],
-  ['Trip earnings',money(tripIncome)],
-  ['Waiting fees',money(waiting)],
-  ['Cancellation fees',money(cancellation)],
-  ['Total Earnings',money(totalEarnings)],
-  ['ERP Reimbursed',money(erp)],
-  ['Medisave Deducted (9%)',money(medisave)],
-  ['Earnings After Medisave',money(afterMedisave)],
-  ['Avg price/trip',money(avgPrice)],
-  ['Avg trip distance',avgDistance.toFixed(2)+' km'],
-  ['Avg income/km',money(avgIncomeKm)],
-  ['Fuel paid',money(fuelPaid)],
-  ['Avg fuel price',money(avgFuelPrice)+'/L'],
-  ['CashCard top-ups',money(top)]
+  ['Trips',trips],['Total distance',dist.toFixed(1)+' km'],['Trip earnings',money(tripIncome)],
+  ['Waiting fees',money(waiting)],['Cancellation fees',money(cancellation)],['Total Earnings',money(totalEarnings)],
+  ['ERP Reimbursed',money(erp)],['Medisave Deducted (9%)',money(medisave)],['Earnings After Medisave',money(afterMedisave)],
+  ['Avg price/trip',money(avgPrice)],['Avg trip distance',avgDistance.toFixed(2)+' km'],['Avg income/km',money(avgIncomeKm)],
+  ['Fuel paid',money(fuelPaid)],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]
  ];
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
+
 function renderMonthlyDashboard(){
  const grid=document.getElementById('monthlyDashboardGrid'); if(!grid)return;
  const now=new Date(), start=new Date(now.getFullYear(),now.getMonth(),1), startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
