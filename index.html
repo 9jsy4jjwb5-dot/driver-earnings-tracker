@@ -35,6 +35,21 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 .monthlyDashboardBadgeV32{font-size:11px;padding:4px 8px;border-radius:999px;background:#f1f1f1;white-space:nowrap}
 @media(max-width:380px){#mainMonthlyDashboardGrid{grid-template-columns:1fr}#mainMonthlyDashboardGrid .card:first-child{grid-column:auto}}
 </style>
+
+<style id="monthlyDashboardRedesignV33">
+.monthlyPanelV33{margin-top:18px;padding:16px;border:1px solid #d8dce2;border-radius:18px;background:linear-gradient(180deg,#f8fafc 0%,#fff 100%);box-shadow:0 3px 12px rgba(15,23,42,.06)}
+.monthlyPanelTopV33{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px}
+.monthlyEyebrowV33{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#64748b;margin-bottom:4px}
+.monthlyTitleV33{font-size:20px;font-weight:800;line-height:1.2;margin-bottom:5px}
+.monthlyDashboardBadgeV32{font-size:10px;font-weight:800;letter-spacing:.4px;padding:6px 9px;border-radius:999px;background:#e2e8f0;color:#334155;white-space:nowrap}
+.monthlyGroupTitleV33{font-size:10px;font-weight:800;letter-spacing:1.1px;color:#64748b;margin:15px 0 7px}
+.monthlyGroupGridV33{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.monthlyGroupGridV33 .card{padding:10px 11px;border:1px solid #e5e7eb;border-radius:12px;box-shadow:none;min-width:0}
+.monthlyGroupGridV33 .label{font-size:11px;line-height:1.25;color:#64748b}
+.monthlyGroupGridV33 .value{font-size:17px;font-weight:800;line-height:1.2;margin-top:5px;overflow-wrap:anywhere}
+@media(max-width:360px){.monthlyPanelV33{padding:12px}.monthlyGroupGridV33 .value{font-size:15px}.monthlyPanelTopV33{gap:6px}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -50,11 +65,22 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div class="section-title">Today's Summary</div>
   <div class="grid" id="summary"></div>
 
-  <div class="section-title monthlyDashboardHeaderV32" style="margin-top:20px">
-    <span>Monthly Dashboard</span><span class="monthlyDashboardBadgeV32">This Month</span>
-  </div>
-  <div class="small" id="mainMonthlyDashboardSubtitleV32" style="margin-bottom:10px">Current calendar month · ERP reimbursed separately</div>
-  <div class="grid" id="mainMonthlyDashboardGrid"></div>
+  <section class="monthlyPanelV33" aria-label="Monthly Dashboard">
+    <div class="monthlyPanelTopV33">
+      <div>
+        <div class="monthlyEyebrowV33">MONTHLY OVERVIEW</div>
+        <div class="monthlyTitleV33">Monthly Dashboard</div>
+        <div class="small" id="mainMonthlyDashboardSubtitleV32">Current calendar month · ERP reimbursed separately</div>
+      </div>
+      <span class="monthlyDashboardBadgeV32">THIS MONTH</span>
+    </div>
+    <div class="monthlyGroupTitleV33">EARNINGS</div>
+    <div class="monthlyGroupGridV33" id="monthlyEarningsGridV33"></div>
+    <div class="monthlyGroupTitleV33">FUEL & CASHCARD</div>
+    <div class="monthlyGroupGridV33" id="monthlyFuelGridV33"></div>
+    <div class="monthlyGroupTitleV33">AVERAGES</div>
+    <div class="monthlyGroupGridV33" id="monthlyPerformanceGridV33"></div>
+  </section>
 
   <div class="section-title" style="margin-top:20px">Performance</div>
   <div class="grid" id="performance"></div>
@@ -365,7 +391,10 @@ function normalizeDB(){
 }
 
 function renderMainMonthlyDashboard(){
- const grid=document.getElementById('mainMonthlyDashboardGrid'); if(!grid)return;
+ const earningsGrid=document.getElementById('monthlyEarningsGridV33');
+ const fuelGrid=document.getElementById('monthlyFuelGridV33');
+ const performanceGrid=document.getElementById('monthlyPerformanceGridV33');
+ if(!earningsGrid||!fuelGrid||!performanceGrid)return;
  const now=new Date(), start=new Date(now.getFullYear(),now.getMonth(),1);
  const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
  const inMonth=x=>x.date && x.date>=startStr && x.date<=endStr;
@@ -383,18 +412,27 @@ function renderMainMonthlyDashboard(){
  const avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0;
  const fm=fuelMetrics(db.fuel,startStr,endStr);
  const monthName=now.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+ const monthlySubtitle=document.getElementById('mainMonthlyDashboardSubtitleV32'); if(monthlySubtitle)monthlySubtitle.textContent=monthName+' · ERP reimbursed separately';
  const subtitle=document.getElementById('mainMonthlyDashboardSubtitleV32');
  if(subtitle) subtitle.textContent=monthName+' · ERP reimbursed separately';
- const cells=[
-  ['Month',monthName],['Trips',trips],['Distance',distance.toFixed(1)+' km'],
+ const earnings=[
+  ['Trips',trips],['Distance',distance.toFixed(1)+' km'],
   ['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],
   ['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
-  ['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],
-  ['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],
-  ['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],
-  ['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]
+  ['After Medisave − Fuel',money(netAfterFuel)]
  ];
- grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ const fuel=[
+  ['Fuel Paid',money(fuelPaid)],['CashCard Top-Ups',money(top)],
+  ['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],
+  ['Fuel Cost/km',fm.ready?money(fm.costKm):'—']
+ ];
+ const performance=[
+  ['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)]
+ ];
+ const renderCards=items=>items.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ earningsGrid.innerHTML=renderCards(earnings);
+ fuelGrid.innerHTML=renderCards(fuel);
+ performanceGrid.innerHTML=renderCards(performance);
 }
 
 function renderDashboard(){
