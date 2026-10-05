@@ -24,6 +24,21 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 
 .periodBtn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;background:#e8eef7;color:#18365f}
 .periodBtn.active{background:#183f78;color:#fff}
+
+/* Reports accordions V39 */
+.reportAccordionV39{margin-top:14px;border:1px solid #d9dde3;border-radius:15px;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.reportAccordionHeaderV39{width:100%;border:0;background:transparent;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;text-align:left;font:inherit;cursor:pointer}
+.reportAccordionHeaderV39 .title{font-size:16px;font-weight:800}
+.reportAccordionHeaderV39 .hint{font-size:11px;color:#64748b;margin-top:3px}
+.reportAccordionHeaderV39 .chevron{font-size:18px;line-height:1;transition:transform .18s ease}
+.reportAccordionV39.open .chevron{transform:rotate(180deg)}
+.reportAccordionBodyV39{display:none;padding:0 12px 14px}
+.reportAccordionV39.open .reportAccordionBodyV39{display:block}
+.reportAccordionBodyV39>.card{margin-top:0!important;box-shadow:none;border:0;padding:2px 4px 0}
+.reportAccordionBodyV39 .grid{margin-top:10px!important}
+.reportAccordionBodyV39 .label{font-size:12px!important;line-height:1.25}
+.reportAccordionBodyV39 .value{font-size:18px!important;line-height:1.2;margin-top:5px}
+.fuelMonthSelectV39{margin-top:2px;margin-bottom:12px}
 </style>
 <style id="monthlyDashboardCompactV32">
 #mainMonthlyDashboardGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -193,28 +208,47 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 
 <section id="reports" class="page">
   <div class="section-title">Reports</div>
-  <div class="card">
-    <label class="small">Period</label>
-    <select id="period" onchange="renderReports()"><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>
-  </div>
-  <div class="grid" id="reportGrid" style="margin-top:12px"></div>
-  <div class="card" style="margin-top:14px">
-    <div style="font-weight:800;font-size:20px;margin-bottom:4px">Monthly Dashboard</div>
-    <div class="small" style="margin-bottom:12px">Current calendar month. ERP is shown separately because it is reimbursed by the passenger and is not included in earnings or Medisave.</div>
-    <div class="grid" id="monthlyDashboardGrid"></div>
-  </div>
-<div class="card" style="margin-top:14px">
-  <div style="font-weight:800;font-size:20px;margin-bottom:10px">Fuel Analysis</div>
-  <div class="small" style="margin-bottom:12px">Total fuel purchased includes every refill in the selected period. Fuel efficiency and fuel cost/km use the fuel associated with the refill-to-refill interval and odometer distance. These are shown separately to avoid mixing purchased fuel with interval fuel usage.</div>
-  <div id="fuelReportPeriod" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-    <button class="periodBtn active" data-period="day">Today</button>
-    <button class="periodBtn" data-period="week">This Week</button>
-    <button class="periodBtn" data-period="month">This Month</button>
-    <button class="periodBtn" data-period="all">All Time</button>
-  </div>
-  <div id="fuelReportGrid" class="grid"></div>
-</div>
 
+  <section class="reportAccordionV39" id="reportSummaryAccordionV39">
+    <button class="reportAccordionHeaderV39" type="button" aria-expanded="false" onclick="toggleReportAccordionV39('reportSummaryAccordionV39')">
+      <div><div class="title">Report</div><div class="hint">Tap to view earnings for the selected period</div></div>
+      <span class="chevron">⌄</span>
+    </button>
+    <div class="reportAccordionBodyV39">
+      <div class="card">
+        <label class="small">Period</label>
+        <select id="period" onchange="renderReports()"><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>
+      </div>
+      <div class="grid" id="reportGrid"></div>
+    </div>
+  </section>
+
+  <section class="reportAccordionV39" id="reportMonthlyAccordionV39">
+    <button class="reportAccordionHeaderV39" type="button" aria-expanded="false" onclick="toggleReportAccordionV39('reportMonthlyAccordionV39')">
+      <div><div class="title">Monthly Dashboard</div><div class="hint">Tap to view this month's earnings, fuel & cashcard</div></div>
+      <span class="chevron">⌄</span>
+    </button>
+    <div class="reportAccordionBodyV39">
+      <div class="card">
+        <div class="small" style="margin-bottom:12px">Current calendar month. ERP is shown separately because it is reimbursed by the passenger and is not included in earnings or Medisave.</div>
+        <div class="grid" id="monthlyDashboardGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="reportAccordionV39" id="reportFuelAccordionV39">
+    <button class="reportAccordionHeaderV39" type="button" aria-expanded="false" onclick="toggleReportAccordionV39('reportFuelAccordionV39')">
+      <div><div class="title">Fuel Analysis</div><div class="hint">Tap to view fuel usage and efficiency by month</div></div>
+      <span class="chevron">⌄</span>
+    </button>
+    <div class="reportAccordionBodyV39">
+      <div class="card">
+        <div class="small" style="margin-bottom:10px">Select a month to compare fuel purchased, fuel used for efficiency, distance, efficiency and fuel cost/km.</div>
+        <select id="fuelMonthSelect" class="fuelMonthSelectV39" onchange="renderFuelReportMonth()"></select>
+        <div id="fuelReportGrid" class="grid"></div>
+      </div>
+    </div>
+  </section>
 </section>
 
 <section id="more" class="page">
@@ -694,26 +728,49 @@ try{ normalizeDB(); }catch(e){ console.warn('Normalization failed',e); }
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
 try{ renderAll(); }catch(e){ console.warn('Normal app render failed; recovery controls remain active',e); }
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
-try{ renderFuelReport('all'); }catch(e){}
+try{ populateFuelMonthSelect(); renderFuelReportMonth(); }catch(e){}
 
-function fuelPeriodDates(period){
-  const now=new Date(), start=new Date(now);
-  if(period==='day') start.setHours(0,0,0,0);
-  if(period==='week'){const day=now.getDay();start.setDate(now.getDate()-(day?day-1:6));start.setHours(0,0,0,0);}
-  if(period==='month'){start.setDate(1);start.setHours(0,0,0,0);}
-  if(period==='all'){start.setFullYear(2000);start.setHours(0,0,0,0);}
-  return {start:start.toISOString().slice(0,10),end:now.toISOString().slice(0,10)};
+function toggleReportAccordionV39(id){
+  const el=document.getElementById(id); if(!el)return;
+  const open=el.classList.toggle('open');
+  const btn=el.querySelector('.reportAccordionHeaderV39');
+  if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
 }
-function renderFuelReport(period='day'){
-  const grid=document.getElementById('fuelReportGrid');
-  if(!grid || typeof db==='undefined') return;
-  const r=fuelPeriodDates(period);
-  const rows=(db.fuel||[]).filter(x=>x.date>=r.start&&x.date<=r.end);
+function monthKeyFromDate(date){return String(date||'').slice(0,7)}
+function monthLabel(key){
+  const [y,m]=key.split('-').map(Number);
+  if(!y||!m)return key;
+  return new Date(y,m-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+}
+function availableFuelMonths(){
+  const keys=new Set();
+  (db.fuel||[]).forEach(x=>{const k=monthKeyFromDate(x.date);if(/^\d{4}-\d{2}$/.test(k))keys.add(k);});
+  const now=new Date(), current=now.toISOString().slice(0,7);
+  keys.add(current);
+  return [...keys].sort().reverse();
+}
+function populateFuelMonthSelect(){
+  const sel=document.getElementById('fuelMonthSelect'); if(!sel)return;
+  const months=availableFuelMonths(), previous=sel.value;
+  sel.innerHTML=months.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
+  if(months.includes(previous)) sel.value=previous;
+  else sel.value=months[0]||new Date().toISOString().slice(0,7);
+}
+function renderFuelReportMonth(){
+  const sel=document.getElementById('fuelMonthSelect'); if(!sel)return;
+  const key=sel.value || new Date().toISOString().slice(0,7);
+  const [y,m]=key.split('-').map(Number);
+  const start=`${key}-01`;
+  const endDate=new Date(y,m,0);
+  const end=`${key}-${String(endDate.getDate()).padStart(2,'0')}`;
+  const grid=document.getElementById('fuelReportGrid'); if(!grid || typeof db==='undefined')return;
+  const rows=(db.fuel||[]).filter(x=>x.date>=start&&x.date<=end);
   const litres=rows.reduce((a,x)=>a+(+x.litres||0),0);
   const paid=rows.reduce((a,x)=>a+(+x.paid||0),0);
   const avg=litres?paid/litres:0;
-  const fm=typeof fuelMetrics==='function'?fuelMetrics(db.fuel,r.start,r.end):{ready:false};
+  const fm=typeof fuelMetrics==='function'?fuelMetrics(db.fuel,start,end):{ready:false};
   const cards=[
+    ['Month',monthLabel(key)],
     ['Total fuel purchased',litres.toFixed(2)+' L'],
     ['Total fuel paid',money(paid)],
     ['Avg fuel price',money(avg)+'/L'],
@@ -725,16 +782,15 @@ function renderFuelReport(period='day'){
   ];
   grid.innerHTML=cards.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
-document.addEventListener('click',e=>{
-  const b=e.target.closest('.periodBtn'); if(!b) return;
-  document.querySelectorAll('.periodBtn').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active'); renderFuelReport(b.dataset.period);
-});
-setTimeout(()=>{ try{renderTrips();renderFuel();renderFuelReport('day');}catch(e){console.warn('Final list render failed',e);} },100);
+function renderFuelReport(period='month'){
+  populateFuelMonthSelect();
+  renderFuelReportMonth();
+}
+setTimeout(()=>{ try{renderTrips();renderFuel();populateFuelMonthSelect();renderFuelReportMonth();}catch(e){console.warn('Final list render failed',e);} },100);
 
 
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
-try{renderAll();renderFuelReport('all');renderMonthlyDashboard();renderMainMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
+try{renderAll();populateFuelMonthSelect();renderFuelReportMonth();renderMonthlyDashboard();renderMainMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
