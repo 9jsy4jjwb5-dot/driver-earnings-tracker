@@ -242,9 +242,21 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     </button>
     <div class="reportAccordionBodyV39">
       <div class="card">
-        <div class="small" style="margin-bottom:10px">Select a month to compare earnings, ERP, Medisave, fuel and CashCard.</div>
-        <label class="small" for="reportMonthlyDashboardMonth">Month</label>
-        <select id="reportMonthlyDashboardMonth" onchange="renderMonthlyDashboard()" style="margin-top:4px;margin-bottom:12px"></select>
+        <div class="small" style="margin-bottom:10px">Compare earnings, ERP, Medisave, fuel and CashCard by day, week or month.</div>
+        <label class="small" for="monthlyDashboardPeriod">Period</label>
+        <select id="monthlyDashboardPeriod" onchange="renderMonthlyDashboard()" style="margin-top:4px">
+          <option value="day">Today</option>
+          <option value="weekSelect">Select Week</option>
+          <option value="monthSelect">Select Month</option>
+        </select>
+        <div id="monthlyDashboardWeekPicker" style="display:none;margin-top:10px">
+          <label class="small" for="monthlyDashboardWeek">Week</label>
+          <select id="monthlyDashboardWeek" onchange="renderMonthlyDashboard()"></select>
+        </div>
+        <div id="monthlyDashboardMonthPicker" style="display:none;margin-top:10px;margin-bottom:12px">
+          <label class="small" for="monthlyDashboardMonth">Month</label>
+          <select id="monthlyDashboardMonth" onchange="renderMonthlyDashboard()"></select>
+        </div>
         <div class="grid" id="monthlyDashboardGrid"></div>
       </div>
     </div>
@@ -257,9 +269,21 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     </button>
     <div class="reportAccordionBodyV39">
       <div class="card">
-        <div class="small" style="margin-bottom:10px">Select a month to compare fuel purchased, fuel used for efficiency, distance, efficiency and fuel cost/km.</div>
-        <label class="small" for="fuelMonthSelect">Month</label>
-        <select id="fuelMonthSelect" class="fuelMonthSelectV39" onchange="renderFuelReportMonth()" style="margin-top:4px"></select>
+        <div class="small" style="margin-bottom:10px">Compare fuel purchased, fuel used for efficiency, distance, efficiency and fuel cost/km by day, week or month.</div>
+        <label class="small" for="fuelAnalysisPeriod">Period</label>
+        <select id="fuelAnalysisPeriod" onchange="renderFuelAnalysisPeriod()" style="margin-top:4px">
+          <option value="day">Today</option>
+          <option value="weekSelect">Select Week</option>
+          <option value="monthSelect">Select Month</option>
+        </select>
+        <div id="fuelAnalysisWeekPicker" style="display:none;margin-top:10px">
+          <label class="small" for="fuelAnalysisWeek">Week</label>
+          <select id="fuelAnalysisWeek" onchange="renderFuelAnalysisPeriod()"></select>
+        </div>
+        <div id="fuelAnalysisMonthPicker" style="display:none;margin-top:10px;margin-bottom:12px">
+          <label class="small" for="fuelAnalysisMonth">Month</label>
+          <select id="fuelAnalysisMonth" onchange="renderFuelAnalysisPeriod()"></select>
+        </div>
         <div id="fuelReportGrid" class="grid"></div>
       </div>
     </div>
@@ -716,26 +740,36 @@ function availableReportDashboardMonths(){
  keys.add(new Date().toISOString().slice(0,7));
  return [...keys].sort().reverse();
 }
-function populateMonthlyDashboardMonthSelect(){
- const sel=document.getElementById('reportMonthlyDashboardMonth'); if(!sel)return;
- const months=availableReportDashboardMonths(), previous=sel.value;
- sel.innerHTML=months.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
- if(months.includes(previous)) sel.value=previous; else sel.value=months[0]||new Date().toISOString().slice(0,7);
+function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPickerId){
+ const p=document.getElementById(periodId); if(!p)return;
+ const dates=reportAvailableDates(); const todayKey=reportDateKey(new Date()); if(!dates.includes(todayKey))dates.push(todayKey);
+ const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
+ const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
+ const ws=document.getElementById(weekId), ms=document.getElementById(monthId);
+ if(ws){const prev=ws.value;ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(prev))ws.value=prev;}
+ if(ms){const prev=ms.value;ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(prev))ms.value=prev;}
+ const v=p.value||'day'; const wp=document.getElementById(weekPickerId), mp=document.getElementById(monthPickerId);
+ if(wp)wp.style.display=v==='weekSelect'?'block':'none'; if(mp)mp.style.display=v==='monthSelect'?'block':'none';
 }
+function selectedPeriodRange(periodId,weekId,monthId){
+ const p=document.getElementById(periodId)?.value||'day', now=new Date(); let start=new Date(now), end=new Date(now);
+ if(p==='day'){start.setHours(0,0,0,0);end.setHours(23,59,59,999);}
+ else if(p==='weekSelect'){const info=reportWeekInfo(document.getElementById(weekId)?.value||reportWeekKeyFromDate(reportDateKey(now)));start=new Date(info.start+'T00:00:00');end=new Date(info.end+'T23:59:59');}
+ else {const key=document.getElementById(monthId)?.value||reportMonthKey(now), parts=key.split('-'), y=Number(parts[0]), m=Number(parts[1]);start=new Date(y,m-1,1);end=new Date(y,m,0,23,59,59);}
+ return {period:p,start:reportDateKey(start),end:reportDateKey(end)};
+}
+function populateMonthlyDashboardMonthSelect(){populatePeriodSelectorSet('monthlyDashboardPeriod','monthlyDashboardWeek','monthlyDashboardMonth','monthlyDashboardWeekPicker','monthlyDashboardMonthPicker');}
 function renderMonthlyDashboard(){
- const grid=document.getElementById('monthlyDashboardGrid'); if(!grid)return;
- populateMonthlyDashboardMonthSelect();
- const sel=document.getElementById('reportMonthlyDashboardMonth');
- const key=sel?.value || new Date().toISOString().slice(0,7);
- const [y,m]=key.split('-').map(Number), startStr=`${key}-01`, endDate=new Date(y,m,0), endStr=`${key}-${String(endDate.getDate()).padStart(2,'0')}`;
- const inMonth=x=>x.date && x.date>=startStr && x.date<=endStr;
- const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth);
+ const grid=document.getElementById('monthlyDashboardGrid'); if(!grid)return; populateMonthlyDashboardMonthSelect();
+ const r=selectedPeriodRange('monthlyDashboardPeriod','monthlyDashboardWeek','monthlyDashboardMonth'); const inRange=x=>x.date&&x.date>=r.start&&x.date<=r.end;
+ const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange);
  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
  const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
- const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0, fm=fuelMetrics(db.fuel,startStr,endStr);
- const cells=[['Month',monthLabel(key)],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
+ const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0, fm=fuelMetrics(db.fuel,r.start,r.end);
+ let periodLabel='Today'; if(r.period==='weekSelect'){const key=document.getElementById('monthlyDashboardWeek')?.value;periodLabel=key?reportWeekInfo(key).label:'Selected week';} if(r.period==='monthSelect'){const key=document.getElementById('monthlyDashboardMonth')?.value;periodLabel=key?reportMonthLabel(key):'Selected month';}
+ const cells=[['Period',periodLabel],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
  grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
@@ -797,46 +831,18 @@ function monthLabel(key){
   if(!y||!m)return key;
   return new Date(y,m-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'});
 }
-function availableFuelMonths(){
-  const keys=new Set();
-  (db.fuel||[]).forEach(x=>{const k=monthKeyFromDate(x.date);if(/^\d{4}-\d{2}$/.test(k))keys.add(k);});
-  const now=new Date(), current=now.toISOString().slice(0,7);
-  keys.add(current);
-  return [...keys].sort().reverse();
-}
-function populateFuelMonthSelect(){
-  const sel=document.getElementById('fuelMonthSelect'); if(!sel)return;
-  const months=availableFuelMonths(), previous=sel.value;
-  sel.innerHTML=months.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
-  if(months.includes(previous)) sel.value=previous;
-  else sel.value=months[0]||new Date().toISOString().slice(0,7);
-}
+function availableFuelMonths(){const keys=new Set();(db.fuel||[]).forEach(x=>{const k=monthKeyFromDate(x.date);if(/^\d{4}-\d{2}$/.test(k))keys.add(k);});keys.add(new Date().toISOString().slice(0,7));return [...keys].sort().reverse();}
+function populateFuelMonthSelect(){populatePeriodSelectorSet('fuelAnalysisPeriod','fuelAnalysisWeek','fuelAnalysisMonth','fuelAnalysisWeekPicker','fuelAnalysisMonthPicker');}
 function renderFuelReportMonth(){
-  const sel=document.getElementById('fuelMonthSelect'); if(!sel)return;
-  const key=sel.value || new Date().toISOString().slice(0,7);
-  const [y,m]=key.split('-').map(Number);
-  const start=`${key}-01`;
-  const endDate=new Date(y,m,0);
-  const end=`${key}-${String(endDate.getDate()).padStart(2,'0')}`;
-  const grid=document.getElementById('fuelReportGrid'); if(!grid || typeof db==='undefined')return;
-  const rows=(db.fuel||[]).filter(x=>x.date>=start&&x.date<=end);
-  const litres=rows.reduce((a,x)=>a+(+x.litres||0),0);
-  const paid=rows.reduce((a,x)=>a+(+x.paid||0),0);
-  const avg=litres?paid/litres:0;
-  const fm=typeof fuelMetrics==='function'?fuelMetrics(db.fuel,start,end):{ready:false};
-  const cards=[
-    ['Month',monthLabel(key)],
-    ['Total fuel purchased',litres.toFixed(2)+' L'],
-    ['Total fuel paid',money(paid)],
-    ['Avg fuel price',money(avg)+'/L'],
-    ['Fuel used for efficiency',fm.ready?fm.litres.toFixed(2)+' L':'—'],
-    ['Distance covered',fm.ready?fm.distance.toFixed(1)+' km':'—'],
-    ['Fuel efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills'],
-    ['Fuel cost/km',fm.ready?money(fm.costKm):'Add 2+ odometer refills'],
-    ['Refills',rows.length]
-  ];
-  grid.innerHTML=cards.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ const grid=document.getElementById('fuelReportGrid'); if(!grid||typeof db==='undefined')return; populateFuelMonthSelect();
+ const r=selectedPeriodRange('fuelAnalysisPeriod','fuelAnalysisWeek','fuelAnalysisMonth'); const rows=(db.fuel||[]).filter(x=>x.date>=r.start&&x.date<=r.end);
+ const litres=rows.reduce((a,x)=>a+(+x.litres||0),0), paid=rows.reduce((a,x)=>a+(+x.paid||0),0), avg=litres?paid/litres:0; const fm=fuelMetrics(db.fuel,r.start,r.end);
+ let periodLabel='Today'; if(r.period==='weekSelect'){const key=document.getElementById('fuelAnalysisWeek')?.value;periodLabel=key?reportWeekInfo(key).label:'Selected week';} if(r.period==='monthSelect'){const key=document.getElementById('fuelAnalysisMonth')?.value;periodLabel=key?reportMonthLabel(key):'Selected month';}
+ const cards=[['Period',periodLabel],['Total fuel purchased',litres.toFixed(2)+' L'],['Total fuel paid',money(paid)],['Avg fuel price',money(avg)+'/L'],['Fuel used for efficiency',fm.ready?fm.litres.toFixed(2)+' L':'—'],['Distance covered',fm.ready?fm.distance.toFixed(1)+' km':'—'],['Fuel efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'Add 2+ odometer refills'],['Fuel cost/km',fm.ready?money(fm.costKm):'Add 2+ odometer refills'],['Refills',rows.length]];
+ grid.innerHTML=cards.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
+function renderFuelAnalysisPeriod(){renderFuelReportMonth();}
+
 function renderFuelReport(period='month'){
   populateFuelMonthSelect();
   renderFuelReportMonth();
