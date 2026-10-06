@@ -242,7 +242,9 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     </button>
     <div class="reportAccordionBodyV39">
       <div class="card">
-        <div class="small" style="margin-bottom:12px">Current calendar month. ERP is shown separately because it is reimbursed by the passenger and is not included in earnings or Medisave.</div>
+        <div class="small" style="margin-bottom:10px">Select a month to compare earnings, ERP, Medisave, fuel and CashCard.</div>
+        <label class="small" for="reportMonthlyDashboardMonth">Month</label>
+        <select id="reportMonthlyDashboardMonth" onchange="renderMonthlyDashboard()" style="margin-top:4px;margin-bottom:12px"></select>
         <div class="grid" id="monthlyDashboardGrid"></div>
       </div>
     </div>
@@ -256,7 +258,8 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <div class="reportAccordionBodyV39">
       <div class="card">
         <div class="small" style="margin-bottom:10px">Select a month to compare fuel purchased, fuel used for efficiency, distance, efficiency and fuel cost/km.</div>
-        <select id="fuelMonthSelect" class="fuelMonthSelectV39" onchange="renderFuelReportMonth()"></select>
+        <label class="small" for="fuelMonthSelect">Month</label>
+        <select id="fuelMonthSelect" class="fuelMonthSelectV39" onchange="renderFuelReportMonth()" style="margin-top:4px"></select>
         <div id="fuelReportGrid" class="grid"></div>
       </div>
     </div>
@@ -706,30 +709,36 @@ function renderReports(){
  document.getElementById('reportGrid').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
+function availableReportDashboardMonths(){
+ const keys=new Set();
+ const add=x=>{if(x&&/^\d{4}-\d{2}-\d{2}$/.test(x.date))keys.add(x.date.slice(0,7));};
+ (db.trips||[]).forEach(add); (db.fuel||[]).forEach(add); (db.cashcard||[]).forEach(add);
+ keys.add(new Date().toISOString().slice(0,7));
+ return [...keys].sort().reverse();
+}
+function populateMonthlyDashboardMonthSelect(){
+ const sel=document.getElementById('reportMonthlyDashboardMonth'); if(!sel)return;
+ const months=availableReportDashboardMonths(), previous=sel.value;
+ sel.innerHTML=months.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
+ if(months.includes(previous)) sel.value=previous; else sel.value=months[0]||new Date().toISOString().slice(0,7);
+}
 function renderMonthlyDashboard(){
  const grid=document.getElementById('monthlyDashboardGrid'); if(!grid)return;
- const now=new Date(), start=new Date(now.getFullYear(),now.getMonth(),1), startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
+ populateMonthlyDashboardMonthSelect();
+ const sel=document.getElementById('reportMonthlyDashboardMonth');
+ const key=sel?.value || new Date().toISOString().slice(0,7);
+ const [y,m]=key.split('-').map(Number), startStr=`${key}-01`, endDate=new Date(y,m,0), endStr=`${key}-${String(endDate.getDate()).padStart(2,'0')}`;
  const inMonth=x=>x.date && x.date>=startStr && x.date<=endStr;
  const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth);
  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
- const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
- const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
- const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
- const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
- const medisave=total*0.09, after=total-medisave;
+ const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+ const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
- const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0;
- const fm=fuelMetrics(db.fuel,startStr,endStr);
- const monthName=now.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
- const cells=[
-  ['Month',monthName],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],
-  ['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
-  ['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],
-  ['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],
-  ['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]
- ];
+ const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0, fm=fuelMetrics(db.fuel,startStr,endStr);
+ const cells=[['Month',monthLabel(key)],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
  grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
+
 function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>String(x.id)!==String(id));save();renderAll()}}
 
 // Safe edit/delete click handling. Uses event delegation so dynamically-rendered
@@ -765,7 +774,7 @@ function renderAll(){
   try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
   try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
   try{renderReports();}catch(e){console.warn('Reports render failed',e)}
-  try{renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
+  try{populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
 }
 // Recovery-first startup: update backup status BEFORE rendering the normal app.
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
@@ -836,7 +845,7 @@ setTimeout(()=>{ try{renderTrips();renderFuel();populateFuelMonthSelect();render
 
 
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
-try{renderAll();populateFuelMonthSelect();renderFuelReportMonth();renderMonthlyDashboard();renderMainMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
+try{renderAll();populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();populateFuelMonthSelect();renderFuelReportMonth();renderMainMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
