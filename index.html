@@ -318,7 +318,7 @@ const KEY="driverEarningsV1";
 
 // Core helpers required by all screens.
 const today=()=>new Date().toISOString().slice(0,10);
-const money=n=>'$'+Number(n||0).toFixed(2);
+const money=n=>{const v=Number(n||0);return v<0?'- $'.replace(' ','')+Math.abs(v).toFixed(2):'$'+v.toFixed(2)};
 
 
 
