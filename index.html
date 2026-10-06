@@ -583,7 +583,7 @@ function renderMainMonthlyDashboard(){
  if(subtitle) subtitle.textContent=monthName+' · ERP reimbursed separately';
  const earnings=[
   ['Trips',trips],['Distance',distance.toFixed(1)+' km'],
-  ['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],
+  ['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(cancellation)],
   ['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
   ['After Medisave − Fuel',money(netAfterFuel)]
  ];
@@ -605,7 +605,7 @@ function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
  const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
  const income=price+wait+can, medisave=income*0.09, afterMedisave=income-medisave;
- const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
+ const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(can)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
  const fm=fuelMetrics(db.fuel,d,d);
