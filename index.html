@@ -167,6 +167,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <button class="btn" onclick="openForm('trip')">＋ Add Trip</button>
     <button class="btn alt" onclick="openForm('fuel')">＋ Add Fuel</button>
     <button class="btn alt wide" onclick="openForm('cashcard')">＋ CashCard Top-Up</button>
+    <button class="btn alt wide" onclick="openForm('incentive')">＋ Add Incentive</button>
   </div>
   <section class="dashboardAccordionV34" id="todayAccordionV34">
     <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="toggleDashboardAccordionV34('todayAccordionV34')">
@@ -218,6 +219,12 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div class="section-title">Fuel Refills</div>
   <button class="btn" onclick="openForm('fuel')">＋ Add Fuel Refill</button>
   <div id="fuelList" class="card" style="margin-top:12px"></div>
+</section>
+
+<section id="incentive" class="page">
+  <div class="section-title">Incentive</div>
+  <button class="btn" onclick="openForm('incentive')">＋ Add Incentive</button>
+  <div id="incentiveList" class="card" style="margin-top:12px"></div>
 </section>
 
 <section id="reports" class="page">
@@ -350,6 +357,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 <button class="navbtn active" data-page="dashboard">⌂<br>Dashboard</button>
 <button class="navbtn" data-page="trips">🚕<br>Trips</button>
 <button class="navbtn" data-page="fuel">⛽<br>Fuel</button>
+<button class="navbtn" data-page="incentive">🎁<br>Incentive</button>
 <button class="navbtn" data-page="reports">▥<br>Reports</button>
 <button class="navbtn" data-page="more">•••<br>More</button>
 </div></nav>
@@ -372,14 +380,15 @@ function cleanDB(x){
   return {
     trips:Array.isArray(x.trips)?x.trips:[],
     fuel:Array.isArray(x.fuel)?x.fuel:[],
-    cashcard:Array.isArray(x.cashcard)?x.cashcard:(Array.isArray(x.cash)?x.cash:[])
+    cashcard:Array.isArray(x.cashcard)?x.cashcard:(Array.isArray(x.cash)?x.cash:[]),
+    incentive:Array.isArray(x.incentive)?x.incentive:[]
   };
 }
 function readJSONKey(k){
   try{const raw=localStorage.getItem(k); if(!raw)return null; return cleanDB(JSON.parse(raw));}catch(e){return null;}
 }
 function readMainDB(){return readJSONKey(KEY);}
-function recordCount(x){return x?(x.trips?.length||0)+(x.fuel?.length||0)+(x.cashcard?.length||0):0;}
+function recordCount(x){return x?(x.trips?.length||0)+(x.fuel?.length||0)+(x.cashcard?.length||0)+(x.incentive?.length||0):0;}
 function backupCandidates(){
   const keys=[KEY,"driverEarningsBackupV15","driverEarningsBackupV15_2","driverEarningsBackupV14","driverEarningsBackupV14_2","driverEarningsDB","driver_earnings_db","driverEarnings","earningsDB"];
   const out=[];
@@ -387,7 +396,7 @@ function backupCandidates(){
   return out.sort((a,b)=>b.count-a.count);
 }
 function bestSavedDB(){const c=backupCandidates(); return c.length?c[0]:null;}
-function backupStatusText(){const b=bestSavedDB(); const x=b?.data||readMainDB(); return `Saved: ${x?.trips?.length||0} trips • ${x?.fuel?.length||0} refills • ${x?.cashcard?.length||0} CashCard`;}
+function backupStatusText(){const b=bestSavedDB(); const x=b?.data||readMainDB(); return `Saved: ${x?.trips?.length||0} trips • ${x?.fuel?.length||0} refills • ${x?.cashcard?.length||0} CashCard • ${x?.incentive?.length||0} incentives`;}
 function updateBackupStatus(source){
   const el=document.getElementById('backupStatusV15'); if(el)el.textContent=backupStatusText();
   const src=document.getElementById('backupSourceV17'); if(src)src.textContent=source?`Records found in saved browser storage: ${source}`:'Recovery checks saved browser storage without deleting anything.';
@@ -443,14 +452,15 @@ function loadDB(){
   const main=readMainDB();
   if(recordCount(main)>0) return main;
   const b=bestSavedDB();
-  return b?b.data:{trips:[],fuel:[],cashcard:[]};
+  return b?b.data:{trips:[],fuel:[],cashcard:[],incentive:[]};
 }
 let db=loadDB();
 function save(){
   const clean={
     trips:Array.isArray(db.trips)?db.trips:[],
     fuel:Array.isArray(db.fuel)?db.fuel:[],
-    cashcard:Array.isArray(db.cashcard)?db.cashcard:[]
+    cashcard:Array.isArray(db.cashcard)?db.cashcard:[],
+    incentive:Array.isArray(db.incentive)?db.incentive:[]
   };
   const raw=JSON.stringify(clean);
   localStorage.setItem(KEY,raw);
@@ -465,7 +475,7 @@ function restoreIfMainKeyMissing(){
   if(recordCount(main)>0){db=main;return false;}
   const b=bestSavedDB();
   if(b){try{localStorage.setItem(KEY,JSON.stringify(b.data));db=b.data;updateBackupStatus(b.key);return true;}catch(e){}}
-  db=main||{trips:[],fuel:[],cashcard:[]};
+  db=main||{trips:[],fuel:[],cashcard:[],incentive:[]};
   return false;
 }
 function syncFromStorage(){
@@ -527,6 +537,16 @@ function openForm(type, editId=null){
    <button class="btn">${existing?'Update Top-Up':'Save Top-Up'}</button>
    <button type="button" class="btn alt" onclick="openPage('more')">Cancel</button>`;
  }
+ if(type==='incentive'){
+   const x=existing||{date:today(),amount:''};
+   title=existing?'Edit Incentive':'Add Incentive';
+   f.innerHTML=`
+   <div class="field"><label>Incentive date</label><input id="date" type="date" value="${x.date}"></div>
+   <div class="field"><label>Incentive amount ($)</label><input id="amount" type="number" step="0.01" min="0" required value="${x.amount||''}"></div>
+   <div class="small">Incentive is included in Total Earnings and the 9% Medisave calculation.</div>
+   <button class="btn">${existing?'Update Incentive':'Save Incentive'}</button>
+   <button type="button" class="btn alt" onclick="openPage('incentive')">Cancel</button>`;
+ }
  document.getElementById('formTitle').textContent=title;
  f.onsubmit=e=>{
    e.preventDefault();
@@ -542,7 +562,11 @@ function openForm(type, editId=null){
      const data={date:date.value,amount:+amount.value};
      if(existing) Object.assign(existing,data); else db.cashcard.push({id:crypto.randomUUID(),...data});
    }
-   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':'more');
+   if(type==='incentive'){
+     const data={date:date.value,amount:+amount.value};
+     if(existing) Object.assign(existing,data); else db.incentive.push({id:crypto.randomUUID(),...data});
+   }
+   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':type==='incentive'?'incentive':'more');
  };
 }
 
@@ -594,6 +618,11 @@ function normalizeDB(){
     ...x, id:x.id ?? ('cash-'+i+'-'+Date.now()), date:x.date||'',
     amount:Number(x.amount ?? x.topup ?? 0)||0
   }));
+  const incentiveSrc = Array.isArray(src.incentive)?src.incentive:[];
+  db.incentive = incentiveSrc.map((x,i)=>({
+    ...x, id:x.id ?? ('incentive-'+i+'-'+Date.now()), date:x.date||'',
+    amount:Number(x.amount ?? x.incentive ?? 0)||0
+  }));
   // Only write back a non-empty normalized database. Never replace good data with empty data.
   if(recordCount(db)>0){ try{ saveDB(); }catch(e){ console.warn('Normalized save failed',e); } }
 }
@@ -606,12 +635,13 @@ function renderMainMonthlyDashboard(){
  const now=new Date(), start=new Date(now.getFullYear(),now.getMonth(),1);
  const startStr=start.toISOString().slice(0,10), endStr=now.toISOString().slice(0,10);
  const inMonth=x=>x.date && x.date>=startStr && x.date<=endStr;
- const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth);
+ const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth), inc=(db.incentive||[]).filter(inMonth);
  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
  const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
  const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
- const total=tripIncome+waiting+cancellation;
+ const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0);
+ const total=tripIncome+waiting+cancellation+incentive;
  const erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
  const medisave=total*0.09, after=total-medisave;
  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0);
@@ -625,7 +655,7 @@ function renderMainMonthlyDashboard(){
  if(subtitle) subtitle.textContent=monthName+' · ERP reimbursed separately';
  const earnings=[
   ['Trips',trips],['Distance',distance.toFixed(1)+' km'],
-  ['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(cancellation)],
+  ['Total Earnings',money(total)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(cancellation)],
   ['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
   ['After Medisave − Fuel',money(netAfterFuel)]
  ];
@@ -644,10 +674,10 @@ function renderMainMonthlyDashboard(){
 }
 
 function renderDashboard(){
- const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d);
- const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
- const income=price+wait+can, medisave=income*0.09, afterMedisave=income-medisave;
- const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(can)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
+ const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d), inc=(db.incentive||[]).filter(x=>x.date===d);
+ const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
+ const income=price+wait+can+incentive, medisave=income*0.09, afterMedisave=income-medisave;
+ const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(can)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
  const fm=fuelMetrics(db.fuel,d,d);
@@ -696,6 +726,16 @@ function renderCash(){
  const el=document.getElementById('cashList'); if(!db.cashcard.length){el.innerHTML='<div class="empty">No CashCard top-ups recorded yet.</div>';return}
  el.innerHTML=[...db.cashcard].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button type="button" class="editBtn" data-type="cashcard" data-id="${x.id}">Edit</button> <button type="button" class="deleteBtn" data-type="cashcard" data-id="${x.id}">Delete</button></div></div>`).join('');
 }
+function renderIncentive(){
+ const el=document.getElementById('incentiveList'); if(!el)return;
+ const rows=Array.isArray(db.incentive)?db.incentive.slice():[];
+ if(!rows.length){el.innerHTML='<div class="empty">No incentives recorded yet.</div>';return;}
+ rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ const total=rows.reduce((a,x)=>a+(Number(x.amount)||0),0), medisave=total*0.09, after=total-medisave;
+ let html=`<div class="small" style="margin-bottom:12px">Incentive records: <b>${rows.length}</b> · Total Incentive: <b>${money(total)}</b> · After 9%: <b>${money(after)}</b></div>`;
+ rows.forEach((x,i)=>{const amount=Number(x.amount)||0,id=String(x.id??('incentive-'+i));html+=`<div class="item"><div><b>${fmtDate(String(x.date||''))}</b></div><div style="text-align:right"><b>${money(amount)}</b><br><span class="small">After 9%: ${money(amount*0.91)}</span><br><button type="button" class="editBtn" data-type="incentive" data-id="${id}">Edit</button> <button type="button" class="deleteBtn" data-type="incentive" data-id="${id}">Delete</button></div></div>`;});
+ el.innerHTML=html;
+}
 function reportDateKey(d){
  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
  return `${y}-${m}-${day}`;
@@ -720,7 +760,7 @@ function reportWeekKeyFromDate(dateStr){
  return `${y}-W${String(week).padStart(2,'0')}`;
 }
 function reportAvailableDates(){
- return [...(db.trips||[]),...(db.fuel||[]),...(db.cashcard||[])].map(x=>x.date).filter(Boolean);
+ return [...(db.trips||[]),...(db.fuel||[]),...(db.cashcard||[]),...(db.incentive||[])].map(x=>x.date).filter(Boolean);
 }
 function populateReportWeekMonthSelectors(){
  const dates=reportAvailableDates();
@@ -747,14 +787,15 @@ function renderReports(){
  }
  const startStr=reportDateKey(start), endStr=reportDateKey(end);
  const inRange=x=>x.date && x.date>=startStr && x.date<=endStr;
- const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange);
+ const t=db.trips.filter(inRange), f=db.fuel.filter(inRange), c=db.cashcard.filter(inRange), inc=(db.incentive||[]).filter(inRange);
  const trips=t.length;
  const dist=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
  const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
  const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
  const erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
- const totalEarnings=tripIncome+waiting+cancellation;
+ const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0);
+ const totalEarnings=tripIncome+waiting+cancellation+incentive;
  const medisave=totalEarnings*0.09;
  const afterMedisave=totalEarnings-medisave;
  const avgPrice=trips?tripIncome/trips:0;
@@ -767,7 +808,7 @@ function renderReports(){
  const fm=fuelMetrics(db.fuel,startStr,endStr);
  const cells=[
   ['Trips',trips],['Total distance',dist.toFixed(1)+' km'],['Trip earnings',money(tripIncome)],
-  ['Waiting fees',money(waiting)],['Cancellation fees',money(cancellation)],['Total Earnings',money(totalEarnings)],
+  ['Waiting fees',money(waiting)],['Cancellation fees',money(cancellation)],['Incentive',money(incentive)],['Total Earnings',money(totalEarnings)],
   ['ERP Reimbursed',money(erp)],['Medisave Deducted (9%)',money(medisave)],['Earnings After Medisave',money(afterMedisave)],
   ['Avg price/trip',money(avgPrice)],['Avg trip distance',avgDistance.toFixed(2)+' km'],['Avg income/km',money(avgIncomeKm)],
   ['Fuel paid',money(fuelPaid)],['Avg fuel price',money(avgFuelPrice)+'/L'],['CashCard top-ups',money(top)]
@@ -804,14 +845,14 @@ function populateMonthlyDashboardMonthSelect(){populatePeriodSelectorSet('monthl
 function renderMonthlyDashboard(){
  const grid=document.getElementById('monthlyDashboardGrid'); if(!grid)return; populateMonthlyDashboardMonthSelect();
  const r=selectedPeriodRange('monthlyDashboardPeriod','monthlyDashboardWeek','monthlyDashboardMonth'); const inRange=x=>x.date&&x.date>=r.start&&x.date<=r.end;
- const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange);
+ const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange), inc=(db.incentive||[]).filter(inRange);
  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
- const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
+ const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), total=tripIncome+waiting+cancellation+incentive, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
  const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0, fm=fuelMetrics(db.fuel,r.start,r.end);
  let periodLabel='Today'; if(r.period==='weekSelect'){const key=document.getElementById('monthlyDashboardWeek')?.value;periodLabel=key?reportWeekInfo(key).label:'Selected week';} if(r.period==='monthSelect'){const key=document.getElementById('monthlyDashboardMonth')?.value;periodLabel=key?reportMonthLabel(key):'Selected month';}
- const cells=[['Period',periodLabel],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
+ const cells=[['Period',periodLabel],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
  grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
@@ -860,13 +901,13 @@ function compareRangeV45(type,key){
 }
 function compareStatsV45(type,key){
   const r=compareRangeV45(type,key), inRange=x=>x.date&&x.date>=r.start&&x.date<=r.end;
-  const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange);
+  const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange), inc=(db.incentive||[]).filter(inRange);
   const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
   const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
-  const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
+  const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), total=tripIncome+waiting+cancellation+incentive, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
   const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
   const fm=fuelMetrics(db.fuel,r.start,r.end);
-  return {label:comparePeriodLabelV45(type,key),trips,distance,total,erp,medisave,after,fuelPaid,top,eff:fm.ready?fm.efficiency:null,costKm:fm.ready?fm.costKm:null,avgTrip:trips?total/trips:0,avgKm:distance?total/distance:0};
+  return {label:comparePeriodLabelV45(type,key),trips,distance,total,incentive,erp,medisave,after,fuelPaid,top,eff:fm.ready?fm.efficiency:null,costKm:fm.ready?fm.costKm:null,avgTrip:trips?total/trips:0,avgKm:distance?total/distance:0};
 }
 function populatePeriodComparisonSelectorsV45(){
   const type=document.getElementById('comparePeriodTypeV45')?.value||'week';
@@ -885,11 +926,11 @@ function renderPeriodComparisonV45(){
   const aKey=document.getElementById('compareASelectV45')?.value, bKey=document.getElementById('compareBSelectV45')?.value;
   const grid=document.getElementById('comparePeriodGridV45'); if(!grid||!aKey||!bKey)return;
   const a=compareStatsV45(type,aKey), b=compareStatsV45(type,bKey);
-  const rows=[['Trips',x=>String(x.trips)],['Distance',x=>x.distance.toFixed(1)+' km'],['Total Earnings',x=>money(x.total)],['ERP Reimbursed',x=>money(x.erp)],['Medisave (9%)',x=>money(x.medisave)],['After Medisave',x=>money(x.after)],['Fuel Paid',x=>money(x.fuelPaid)],['After Medisave − Fuel',x=>money(x.after-x.fuelPaid)],['Avg Earnings/Trip',x=>money(x.avgTrip)],['Avg Earnings/km',x=>money(x.avgKm)],['Fuel Efficiency',x=>x.eff==null?'—':x.eff.toFixed(2)+' km/L'],['Fuel Cost/km',x=>x.costKm==null?'—':money(x.costKm)],['CashCard Top-Ups',x=>money(x.top)]];
+  const rows=[['Trips',x=>String(x.trips)],['Distance',x=>x.distance.toFixed(1)+' km'],['Incentive',x=>money(x.incentive)],['Total Earnings',x=>money(x.total)],['ERP Reimbursed',x=>money(x.erp)],['Medisave (9%)',x=>money(x.medisave)],['After Medisave',x=>money(x.after)],['Fuel Paid',x=>money(x.fuelPaid)],['After Medisave − Fuel',x=>money(x.after-x.fuelPaid)],['Avg Earnings/Trip',x=>money(x.avgTrip)],['Avg Earnings/km',x=>money(x.avgKm)],['Fuel Efficiency',x=>x.eff==null?'—':x.eff.toFixed(2)+' km/L'],['Fuel Cost/km',x=>x.costKm==null?'—':money(x.costKm)],['CashCard Top-Ups',x=>money(x.top)]];
   grid.innerHTML=[a,b].map(period=>`<div class="compareCardV45"><div class="comparePeriodTitleV45">${period.label}</div>${rows.map(row=>`<div class="compareMetricV45"><div class="label">${row[0]}</div><div class="value">${row[1](period)}</div></div>`).join('')}</div>`).join('');
 }
 
-function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
+function clearData(){if(confirm('Delete all trip, fuel, incentive and CashCard records?')){db={trips:[],fuel:[],cashcard:[],incentive:[]};save()}}
 function toggleDashboardAccordionV34(id){
   const el=document.getElementById(id);
   if(!el)return;
@@ -904,6 +945,7 @@ function renderAll(){
   try{renderTrips();}catch(e){console.warn('Trips render failed',e)}
   try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
   try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
+  try{renderIncentive();}catch(e){console.warn('Incentive render failed',e)}
   try{renderReports();}catch(e){console.warn('Reports render failed',e)}
   try{renderPeriodComparisonV45();}catch(e){console.warn('Comparison render failed',e)}
   try{populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
@@ -945,7 +987,7 @@ function renderFuelReport(period='month'){
   populateFuelMonthSelect();
   renderFuelReportMonth();
 }
-setTimeout(()=>{ try{renderTrips();renderFuel();populateFuelMonthSelect();renderFuelReportMonth();}catch(e){console.warn('Final list render failed',e);} },100);
+setTimeout(()=>{ try{renderTrips();renderFuel();renderIncentive();populateFuelMonthSelect();renderFuelReportMonth();}catch(e){console.warn('Final list render failed',e);} },100);
 
 
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
@@ -959,11 +1001,11 @@ try{renderAll();populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();p
 (function(){
   const KEY='driverEarningsV1';
   const keys=['driverEarningsV1','driverEarningsBackupV15','driverEarningsBackupV15_2','driverEarningsBackupV14','driverEarningsBackupV14_2','driverEarningsDB','driver_earnings_db','driverEarnings','earningsDB'];
-  function parse(k){try{const r=localStorage.getItem(k);if(!r)return null;const x=JSON.parse(r);if(!x||typeof x!=='object')return null;return {trips:Array.isArray(x.trips)?x.trips:[],fuel:Array.isArray(x.fuel)?x.fuel:[],cashcard:Array.isArray(x.cashcard)?x.cashcard:(Array.isArray(x.cash)?x.cash:[])};}catch(e){return null;}}
+  function parse(k){try{const r=localStorage.getItem(k);if(!r)return null;const x=JSON.parse(r);if(!x||typeof x!=='object')return null;return {trips:Array.isArray(x.trips)?x.trips:[],fuel:Array.isArray(x.fuel)?x.fuel:[],cashcard:Array.isArray(x.cashcard)?x.cashcard:(Array.isArray(x.cash)?x.cash:[]),incentive:Array.isArray(x.incentive)?x.incentive:[]};}catch(e){return null;}}
   function count(x){return x?(x.trips.length+x.fuel.length+x.cashcard.length):0;}
   function candidates(){return keys.map(k=>({k,x:parse(k)})).filter(o=>count(o.x)>0).sort((a,b)=>count(b.x)-count(a.x));}
   function status(){const c=candidates(), x=c[0]?.x||parse(KEY)||{trips:[],fuel:[],cashcard:[]}; return {c,x};}
-  function paint(){const s=status(); const el=document.getElementById('backupStatusV15'); if(el) el.textContent=`Saved: ${s.x.trips.length} trips • ${s.x.fuel.length} refills • ${s.x.cashcard.length} CashCard`; const src=document.getElementById('backupSourceV17'); if(src) src.textContent=s.c.length?`Records found in saved browser storage: ${s.c[0].k}`:'No non-empty saved record set found';}
+  function paint(){const s=status(); const el=document.getElementById('backupStatusV15'); if(el) el.textContent=`Saved: ${s.x.trips.length} trips • ${s.x.fuel.length} refills • ${s.x.cashcard.length} CashCard • ${s.x.incentive.length} incentives`; const src=document.getElementById('backupSourceV17'); if(src) src.textContent=s.c.length?`Records found in saved browser storage: ${s.c[0].k}`:'No non-empty saved record set found';}
   function recover(){const s=status(); if(!s.c.length){paint();alert('No non-empty saved record set was found. Do not clear Safari website data.');return;} const raw=JSON.stringify(s.c[0].x); try{localStorage.setItem(KEY,raw);localStorage.setItem('driverEarningsBackupV15',raw);localStorage.setItem('driverEarningsBackupV15_2',raw); paint(); alert(`Recovered ${s.c[0].x.trips.length} trip(s) and ${s.c[0].x.fuel.length} fuel refill(s). Reloading now.`); location.reload();}catch(e){alert('Safari would not allow recovery to be written. The saved browser data was not intentionally cleared.');}}
   function exportData(){const s=status();if(!s.c.length){paint();alert('No non-empty saved record set was found to export.');return;} try{const blob=new Blob([JSON.stringify(s.c[0].x,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='driver-earnings-recovery.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);paint();}catch(e){alert('Export failed in this browser.');}}
   window.recoveryEmergency={paint,recover,exportData};
