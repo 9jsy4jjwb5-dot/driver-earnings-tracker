@@ -142,6 +142,20 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 </style>
 </style>
 
+
+<style id="comparisonV45">
+.compareSelectorsV45{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.compareSelectorsV45 select{margin-top:4px}
+.compareGridV45{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.compareCardV45{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:11px;min-width:0}
+.compareCardV45 .comparePeriodTitleV45{font-size:13px;font-weight:800;color:#183f78;margin-bottom:9px;line-height:1.25}
+.compareMetricV45{padding:8px 0;border-top:1px solid #eef0f3}
+.compareMetricV45:first-child{border-top:0;padding-top:0}
+.compareMetricV45 .label{font-size:12px!important;line-height:1.25!important;color:#64748b}
+.compareMetricV45 .value{font-size:18px!important;font-weight:800!important;line-height:1.2!important;margin-top:4px!important;overflow-wrap:anywhere}
+@media(max-width:420px){.compareSelectorsV45{grid-template-columns:1fr}.compareGridV45{grid-template-columns:1fr}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -286,6 +300,34 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
         </div>
         <div id="fuelReportGrid" class="grid"></div>
       </div>
+    </div>
+  </section>
+
+  <section class="reportAccordionV39" id="reportCompareAccordionV45">
+    <button class="reportAccordionHeaderV39" type="button" aria-expanded="false" onclick="toggleReportAccordionV45('reportCompareAccordionV45')">
+      <div><div class="title">Compare Periods</div><div class="hint">Compare two weeks or two months side by side</div></div>
+      <span class="chevron">⌄</span>
+    </button>
+    <div class="reportAccordionBodyV39">
+      <div class="card">
+        <div class="small" style="margin-bottom:10px">Choose Week or Month, then select two periods to compare.</div>
+        <label class="small" for="comparePeriodTypeV45">Compare by</label>
+        <select id="comparePeriodTypeV45" onchange="renderPeriodComparisonV45()" style="margin-top:4px">
+          <option value="week">Week</option>
+          <option value="month">Month</option>
+        </select>
+        <div class="compareSelectorsV45">
+          <div>
+            <label class="small" for="compareASelectV45">Period A</label>
+            <select id="compareASelectV45" onchange="renderPeriodComparisonV45()"></select>
+          </div>
+          <div>
+            <label class="small" for="compareBSelectV45">Period B</label>
+            <select id="compareBSelectV45" onchange="renderPeriodComparisonV45()"></select>
+          </div>
+        </div>
+      </div>
+      <div id="comparePeriodGridV45" class="compareGridV45"></div>
     </div>
   </section>
 </section>
@@ -792,6 +834,61 @@ document.addEventListener('click',function(e){
     if(type && id) del(type,id);
   }
 });
+
+
+function toggleReportAccordionV45(id){
+  const el=document.getElementById(id); if(!el)return;
+  const open=el.classList.toggle('open');
+  const btn=el.querySelector('.reportAccordionHeaderV39');
+  if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+}
+function comparePeriodKeysV45(type){
+  const dates=reportAvailableDates();
+  const today=reportDateKey(new Date());
+  if(!dates.includes(today))dates.push(today);
+  if(type==='week') return [...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
+  return [...new Set(dates.map(x=>x.slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)))].sort().reverse();
+}
+function comparePeriodLabelV45(type,key){
+  return type==='week'?reportWeekInfo(key).label:reportMonthLabel(key);
+}
+function compareRangeV45(type,key){
+  if(type==='week'){const i=reportWeekInfo(key);return {start:i.start,end:i.end};}
+  const [y,m]=key.split('-').map(Number);
+  const start=new Date(y,m-1,1), end=new Date(y,m,0);
+  return {start:reportDateKey(start),end:reportDateKey(end)};
+}
+function compareStatsV45(type,key){
+  const r=compareRangeV45(type,key), inRange=x=>x.date&&x.date>=r.start&&x.date<=r.end;
+  const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange);
+  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
+  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+  const total=tripIncome+waiting+cancellation, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
+  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const fm=fuelMetrics(db.fuel,r.start,r.end);
+  return {label:comparePeriodLabelV45(type,key),trips,distance,total,erp,medisave,after,fuelPaid,top,eff:fm.ready?fm.efficiency:null,costKm:fm.ready?fm.costKm:null,avgTrip:trips?total/trips:0,avgKm:distance?total/distance:0};
+}
+function populatePeriodComparisonSelectorsV45(){
+  const type=document.getElementById('comparePeriodTypeV45')?.value||'week';
+  const keys=comparePeriodKeysV45(type);
+  const a=document.getElementById('compareASelectV45'), b=document.getElementById('compareBSelectV45');
+  if(!a||!b)return;
+  const oldA=a.value,oldB=b.value;
+  const opts=keys.map(k=>`<option value="${k}">${comparePeriodLabelV45(type,k)}</option>`).join('');
+  a.innerHTML=opts;b.innerHTML=opts;
+  if(keys.includes(oldA))a.value=oldA; else if(keys.length)a.value=keys[0];
+  if(keys.includes(oldB))b.value=oldB; else if(keys.length>1)b.value=keys[1]; else if(keys.length)b.value=keys[0];
+}
+function renderPeriodComparisonV45(){
+  populatePeriodComparisonSelectorsV45();
+  const type=document.getElementById('comparePeriodTypeV45')?.value||'week';
+  const aKey=document.getElementById('compareASelectV45')?.value, bKey=document.getElementById('compareBSelectV45')?.value;
+  const grid=document.getElementById('comparePeriodGridV45'); if(!grid||!aKey||!bKey)return;
+  const a=compareStatsV45(type,aKey), b=compareStatsV45(type,bKey);
+  const rows=[['Trips',x=>String(x.trips)],['Distance',x=>x.distance.toFixed(1)+' km'],['Total Earnings',x=>money(x.total)],['ERP Reimbursed',x=>money(x.erp)],['Medisave (9%)',x=>money(x.medisave)],['After Medisave',x=>money(x.after)],['Fuel Paid',x=>money(x.fuelPaid)],['After Medisave − Fuel',x=>money(x.after-x.fuelPaid)],['Avg Earnings/Trip',x=>money(x.avgTrip)],['Avg Earnings/km',x=>money(x.avgKm)],['Fuel Efficiency',x=>x.eff==null?'—':x.eff.toFixed(2)+' km/L'],['Fuel Cost/km',x=>x.costKm==null?'—':money(x.costKm)],['CashCard Top-Ups',x=>money(x.top)]];
+  grid.innerHTML=[a,b].map(period=>`<div class="compareCardV45"><div class="comparePeriodTitleV45">${period.label}</div>${rows.map(row=>`<div class="compareMetricV45"><div class="label">${row[0]}</div><div class="value">${row[1](period)}</div></div>`).join('')}</div>`).join('');
+}
+
 function clearData(){if(confirm('Delete all trip, fuel and CashCard records?')){db={trips:[],fuel:[],cashcard:[]};save()}}
 function toggleDashboardAccordionV34(id){
   const el=document.getElementById(id);
@@ -808,6 +905,7 @@ function renderAll(){
   try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
   try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
   try{renderReports();}catch(e){console.warn('Reports render failed',e)}
+  try{renderPeriodComparisonV45();}catch(e){console.warn('Comparison render failed',e)}
   try{populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
 }
 // Recovery-first startup: update backup status BEFORE rendering the normal app.
@@ -851,7 +949,7 @@ setTimeout(()=>{ try{renderTrips();renderFuel();populateFuelMonthSelect();render
 
 
 try{normalizeDB(); updateBackupStatus(bestSavedDB()?.key||'main database');}catch(e){console.warn('Recovery normalization skipped',e)}
-try{renderAll();populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();populateFuelMonthSelect();renderFuelReportMonth();renderMainMonthlyDashboard();}catch(e){console.warn('Final V23 refresh skipped',e)}
+try{renderAll();populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();populateFuelMonthSelect();renderFuelReportMonth();renderMainMonthlyDashboard();renderPeriodComparisonV45();}catch(e){console.warn('Final V23 refresh skipped',e)}
 </script>
 
 <script>(function(){const originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){originalSetItem.call(this,k,v);if(k==="driverEarningsV1"){try{const x=JSON.parse(v);if(recordCount(x)>0){originalSetItem.call(this,"driverEarningsBackupV15",v);originalSetItem.call(this,"driverEarningsBackupV15_2",v);}const el=document.getElementById("backupStatusV15");if(el)el.textContent=backupStatusText();}catch(e){}}};})();</script>
