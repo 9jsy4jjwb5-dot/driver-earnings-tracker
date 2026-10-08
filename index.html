@@ -889,8 +889,29 @@ function comparePeriodKeysV45(type){
   const dates=reportAvailableDates();
   const today=reportDateKey(new Date());
   if(!dates.includes(today))dates.push(today);
-  if(type==='week') return [...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
-  return [...new Set(dates.map(x=>x.slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)))].sort().reverse();
+  let keys;
+  if(type==='week'){
+    keys=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
+    // Always provide at least two selectable weeks, even if only one has records.
+    const current=reportWeekKeyFromDate(today);
+    if(!keys.includes(current)) keys.unshift(current);
+    if(keys.length<2){
+      const info=reportWeekInfo(current);
+      const prevDate=new Date(info.start+'T12:00:00');
+      prevDate.setDate(prevDate.getDate()-7);
+      keys.push(reportWeekKeyFromDate(reportDateKey(prevDate)));
+    }
+  }else{
+    keys=[...new Set(dates.map(x=>x.slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)))].sort().reverse();
+    const current=today.slice(0,7);
+    if(!keys.includes(current)) keys.unshift(current);
+    if(keys.length<2){
+      const [y,m]=current.split('-').map(Number);
+      const prev=new Date(y,m-2,1);
+      keys.push(reportDateKey(prev).slice(0,7));
+    }
+  }
+  return [...new Set(keys)];
 }
 function comparePeriodLabelV45(type,key){
   return type==='week'?reportWeekInfo(key).label:reportMonthLabel(key);
@@ -935,11 +956,24 @@ function renderPeriodComparisonV45(){
 function clearData(){if(confirm('Delete all trip, fuel, incentive and CashCard records?')){db={trips:[],fuel:[],cashcard:[],incentive:[]};save()}}
 function toggleDashboardAccordionV34(id){
   const el=document.getElementById(id);
-  if(!el)return;
-  const open=el.classList.toggle('open');
+  if(!el)return false;
+  const open=!el.classList.contains('open');
+  el.classList.toggle('open',open);
   const btn=el.querySelector('.dashboardAccordionHeaderV34');
   if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+  return open;
 }
+// Reliable tap handlers for iPhone/Safari. Keep the inline handlers too as a fallback.
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.dashboardAccordionHeaderV34').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const el=btn.closest('.dashboardAccordionV34');
+      if(el)toggleDashboardAccordionV34(el.id);
+    },{passive:false});
+  });
+});
 function renderAll(){
   try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
   try{renderDashboard();}catch(e){console.warn('Dashboard render failed',e)}
