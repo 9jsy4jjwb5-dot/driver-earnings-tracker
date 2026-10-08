@@ -1,3 +1,4 @@
+<!-- V51 dashboard/report fixes -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -170,7 +171,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <button class="btn alt wide" onclick="openForm('incentive')">＋ Add Incentive</button>
   </div>
   <section class="dashboardAccordionV34" id="todayAccordionV34">
-    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false">
+    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="this.parentElement.classList.toggle('open');this.setAttribute('aria-expanded',this.parentElement.classList.contains('open')?'true':'false');">
       <div><div class="title">Today's Summary</div><div class="hint">Tap to view today's records</div></div>
       <span class="chevron">⌄</span>
     </button>
@@ -178,7 +179,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   </section>
 
   <section class="dashboardAccordionV34" id="monthlyAccordionV34">
-    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false">
+    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="this.parentElement.classList.toggle('open');this.setAttribute('aria-expanded',this.parentElement.classList.contains('open')?'true':'false');">
       <div><div class="title">Monthly Dashboard</div><div class="hint">Tap to view this month's earnings, fuel & cashcard</div></div>
       <span class="chevron">⌄</span>
     </button>
@@ -201,7 +202,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   </section>
 
   <section class="dashboardAccordionV34" id="performanceAccordionV34">
-    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false">
+    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="this.parentElement.classList.toggle('open');this.setAttribute('aria-expanded',this.parentElement.classList.contains('open')?'true':'false');">
       <div><div class="title">Performance</div><div class="hint">Tap to view trip & fuel performance</div></div>
       <span class="chevron">⌄</span>
     </button>
@@ -765,6 +766,12 @@ function reportAvailableDates(){
 }
 function populateReportWeekMonthSelectors(){
  const dates=reportAvailableDates();
+ const today=new Date();
+ const todayKey=reportDateKey(today);
+ if(!dates.includes(todayKey))dates.push(todayKey);
+ const previousWeekDate=new Date(today); previousWeekDate.setDate(previousWeekDate.getDate()-7);
+ const previousMonthDate=new Date(today.getFullYear(),today.getMonth()-1,1);
+ dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
  const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
  const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
@@ -827,7 +834,13 @@ function availableReportDashboardMonths(){
 }
 function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPickerId){
  const p=document.getElementById(periodId); if(!p)return;
- const dates=reportAvailableDates(); const todayKey=reportDateKey(new Date()); if(!dates.includes(todayKey))dates.push(todayKey);
+ const dates=reportAvailableDates();
+ const today=new Date();
+ const todayKey=reportDateKey(today);
+ if(!dates.includes(todayKey))dates.push(todayKey);
+ const previousWeekDate=new Date(today); previousWeekDate.setDate(previousWeekDate.getDate()-7);
+ const previousMonthDate=new Date(today.getFullYear(),today.getMonth()-1,1);
+ dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
  const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
  const ws=document.getElementById(weekId), ms=document.getElementById(monthId);
@@ -960,15 +973,6 @@ function toggleDashboardAccordionV34(id){
   if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
   return open;
 }
-// Reliable single tap handler for iPhone/Safari. Uses event delegation so it works consistently.
-document.addEventListener('click',e=>{
-  const btn=e.target.closest('.dashboardAccordionHeaderV34');
-  if(!btn)return;
-  e.preventDefault();
-  e.stopPropagation();
-  const el=btn.closest('.dashboardAccordionV34');
-  if(el)toggleDashboardAccordionV34(el.id);
-},{passive:false});
 function renderAll(){
   try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
   try{renderDashboard();}catch(e){console.warn('Dashboard render failed',e)}
