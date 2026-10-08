@@ -501,7 +501,7 @@ function openForm(type, editId=null){
       : db[type].find(x=>String(x.id)===String(editId))
   ) : null;
  if(type==='trip'){
-   const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0};
+   const x=existing||{date:today(),time:'',distance:'',price:'',erp:0,waiting:0,cancel:0,tips:0};
    title=existing?'Edit Trip':'Add Trip';
    f.innerHTML=`
    <div class="field"><label>Date</label><input id="date" type="date" value="${x.date}"></div>
@@ -510,8 +510,8 @@ function openForm(type, editId=null){
    <div class="field"><label>Trip price ($)</label><input id="price" type="number" step="0.01" min="0" required value="${x.price}"></div>
    <div class="field"><label>ERP charge ($)</label><input id="erp" type="number" step="0.01" min="0" value="${x.erp||0}"></div>
    <div class="field"><label>Waiting fee ($)</label><input id="waiting" type="number" step="0.01" min="0" value="${x.waiting||0}"></div>
-   <div class="field"><label>Cancellation fee ($)</label>
-<label>Tips <input name="tips" type="number" min="0" step="0.01" value="${esc(existing?.tips||0)}"></label><input id="cancel" type="number" step="0.01" min="0" value="${x.cancel||0}"></div>
+   <div class="field"><label>Cancellation fee ($)</label><input id="cancel" type="number" step="0.01" min="0" value="${x.cancel||0}"></div>
+   <div class="field"><label>Tips ($)</label><input id="tips" type="number" step="0.01" min="0" value="${x.tips||0}"></div>
    <button class="btn">${existing?'Update Trip':'Save Trip'}</button>
    <button type="button" class="btn alt" onclick="openPage('trips')">Cancel</button>`;
  }
@@ -552,7 +552,7 @@ function openForm(type, editId=null){
  f.onsubmit=e=>{
    e.preventDefault();
    if(type==='trip'){
-     const data={date:date.value,time:time.value,distance:+distance.value,price:+price.value,erp:+erp.value,waiting:+waiting.value,cancel:+cancel.value};
+     const data={date:date.value,time:time.value,distance:+distance.value,price:+price.value,erp:+erp.value,waiting:+waiting.value,cancel:+cancel.value,tips:+tips.value};
      if(existing) Object.assign(existing,data); else db.trips.push({id:crypto.randomUUID(),...data});
    }
    if(type==='fuel'){
@@ -639,7 +639,6 @@ function renderMainMonthlyDashboard(){
  const t=(db.trips||[]).filter(inMonth), f=(db.fuel||[]).filter(inMonth), c=(db.cashcard||[]).filter(inMonth), inc=(db.incentive||[]).filter(inMonth);
  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
- const tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0);
  const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
  const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
  const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0);
@@ -657,7 +656,7 @@ function renderMainMonthlyDashboard(){
  if(subtitle) subtitle.textContent=monthName+' · ERP reimbursed separately';
  const earnings=[
   ['Trips',trips],['Distance',distance.toFixed(1)+' km'],
-  ['Total Earnings',money(total)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(cancellation)],['Tips',money(tips)],
+  ['Total Earnings',money(total)],['Tips',money(tips)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(cancellation)],
   ['Medisave (9%)',money(medisave)],['After Medisave',money(after)],
   ['After Medisave − Fuel',money(netAfterFuel)]
  ];
@@ -679,7 +678,7 @@ function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d), inc=(db.incentive||[]).filter(x=>x.date===d);
  const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
  const income=price+wait+can+incentive, medisave=income*0.09, afterMedisave=income-medisave;
- const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(can)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
+ const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['Tips',money(tips)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(can)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
  const fm=fuelMetrics(db.fuel,d,d);
@@ -793,12 +792,12 @@ function renderReports(){
  const trips=t.length;
  const dist=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0);
- const tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0);
  const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
  const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+ const tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0);
  const erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
  const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0);
- const totalEarnings=tripIncome+waiting+cancellation+incentive;
+ const totalEarnings=tripIncome+waiting+cancellation+tips+incentive;
  const medisave=totalEarnings*0.09;
  const afterMedisave=totalEarnings-medisave;
  const avgPrice=trips?tripIncome/trips:0;
@@ -850,12 +849,12 @@ function renderMonthlyDashboard(){
  const r=selectedPeriodRange('monthlyDashboardPeriod','monthlyDashboardWeek','monthlyDashboardMonth'); const inRange=x=>x.date&&x.date>=r.start&&x.date<=r.end;
  const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange), inc=(db.incentive||[]).filter(inRange);
  const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
- const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
- const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), total=tripIncome+waiting+cancellation+incentive, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
+ const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0), tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0);
+ const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), total=tripIncome+waiting+cancellation+tips+incentive, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
  const netAfterFuel=after-fuelPaid, avgPerTrip=trips?total/trips:0, avgKm=distance?total/distance:0, fm=fuelMetrics(db.fuel,r.start,r.end);
  let periodLabel='Today'; if(r.period==='weekSelect'){const key=document.getElementById('monthlyDashboardWeek')?.value;periodLabel=key?reportWeekInfo(key).label:'Selected week';} if(r.period==='monthSelect'){const key=document.getElementById('monthlyDashboardMonth')?.value;periodLabel=key?reportMonthLabel(key):'Selected month';}
- const cells=[['Period',periodLabel],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
+ const cells=[['Period',periodLabel],['Trips',trips],['Distance',distance.toFixed(1)+' km'],['Total Earnings',money(total)],['Tips',money(tips)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Medisave (9%)',money(medisave)],['After Medisave',money(after)],['Fuel Paid',money(fuelPaid)],['After Medisave − Fuel',money(netAfterFuel)],['Avg Earnings/Trip',money(avgPerTrip)],['Avg Earnings/km',money(avgKm)],['Fuel Efficiency',fm.ready?fm.efficiency.toFixed(2)+' km/L':'—'],['Fuel Cost/km',fm.ready?money(fm.costKm):'—'],['CashCard Top-Ups',money(top)]];
  grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
@@ -906,11 +905,11 @@ function compareStatsV45(type,key){
   const r=compareRangeV45(type,key), inRange=x=>x.date&&x.date>=r.start&&x.date<=r.end;
   const t=(db.trips||[]).filter(inRange), f=(db.fuel||[]).filter(inRange), c=(db.cashcard||[]).filter(inRange), inc=(db.incentive||[]).filter(inRange);
   const trips=t.length, distance=t.reduce((a,x)=>a+(Number(x.distance)||0),0);
-  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
-  const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), total=tripIncome+waiting+cancellation+incentive, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
+  const tripIncome=t.reduce((a,x)=>a+(Number(x.price)||0),0), waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0), cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0), tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0);
+  const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), total=tripIncome+waiting+cancellation+tips+incentive, erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0), medisave=total*0.09, after=total-medisave;
   const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0), top=c.reduce((a,x)=>a+(Number(x.amount)||0),0);
   const fm=fuelMetrics(db.fuel,r.start,r.end);
-  return {label:comparePeriodLabelV45(type,key),trips,distance,total,incentive,erp,medisave,after,fuelPaid,top,eff:fm.ready?fm.efficiency:null,costKm:fm.ready?fm.costKm:null,avgTrip:trips?total/trips:0,avgKm:distance?total/distance:0};
+  return {label:comparePeriodLabelV45(type,key),trips,distance,total,incentive,tips,erp,medisave,after,fuelPaid,top,eff:fm.ready?fm.efficiency:null,costKm:fm.ready?fm.costKm:null,avgTrip:trips?total/trips:0,avgKm:distance?total/distance:0};
 }
 function populatePeriodComparisonSelectorsV45(){
   const type=document.getElementById('comparePeriodTypeV45')?.value||'week';
@@ -929,7 +928,7 @@ function renderPeriodComparisonV45(){
   const aKey=document.getElementById('compareASelectV45')?.value, bKey=document.getElementById('compareBSelectV45')?.value;
   const grid=document.getElementById('comparePeriodGridV45'); if(!grid||!aKey||!bKey)return;
   const a=compareStatsV45(type,aKey), b=compareStatsV45(type,bKey);
-  const rows=[['Trips',x=>String(x.trips)],['Distance',x=>x.distance.toFixed(1)+' km'],['Incentive',x=>money(x.incentive)],['Total Earnings',x=>money(x.total)],['ERP Reimbursed',x=>money(x.erp)],['Medisave (9%)',x=>money(x.medisave)],['After Medisave',x=>money(x.after)],['Fuel Paid',x=>money(x.fuelPaid)],['After Medisave − Fuel',x=>money(x.after-x.fuelPaid)],['Avg Earnings/Trip',x=>money(x.avgTrip)],['Avg Earnings/km',x=>money(x.avgKm)],['Fuel Efficiency',x=>x.eff==null?'—':x.eff.toFixed(2)+' km/L'],['Fuel Cost/km',x=>x.costKm==null?'—':money(x.costKm)],['CashCard Top-Ups',x=>money(x.top)]];
+  const rows=[['Trips',x=>String(x.trips)],['Distance',x=>x.distance.toFixed(1)+' km'],['Tips',x=>money(x.tips)],['Incentive',x=>money(x.incentive)],['Total Earnings',x=>money(x.total)],['ERP Reimbursed',x=>money(x.erp)],['Medisave (9%)',x=>money(x.medisave)],['After Medisave',x=>money(x.after)],['Fuel Paid',x=>money(x.fuelPaid)],['After Medisave − Fuel',x=>money(x.after-x.fuelPaid)],['Avg Earnings/Trip',x=>money(x.avgTrip)],['Avg Earnings/km',x=>money(x.avgKm)],['Fuel Efficiency',x=>x.eff==null?'—':x.eff.toFixed(2)+' km/L'],['Fuel Cost/km',x=>x.costKm==null?'—':money(x.costKm)],['CashCard Top-Ups',x=>money(x.top)]];
   grid.innerHTML=[a,b].map(period=>`<div class="compareCardV45"><div class="comparePeriodTitleV45">${period.label}</div>${rows.map(row=>`<div class="compareMetricV45"><div class="label">${row[0]}</div><div class="value">${row[1](period)}</div></div>`).join('')}</div>`).join('');
 }
 
@@ -953,6 +952,7 @@ function renderAll(){
   try{renderPeriodComparisonV45();}catch(e){console.warn('Comparison render failed',e)}
   try{populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
 }
+(db.trips||[]).forEach(x=>{if(!Number.isFinite(+x.tips))x.tips=0;});
 // Recovery-first startup: update backup status BEFORE rendering the normal app.
 try{ updateBackupStatus(bestSavedDB()?.key||'main database'); }catch(e){}
 try{ restoreIfMainKeyMissing(); }catch(e){}
