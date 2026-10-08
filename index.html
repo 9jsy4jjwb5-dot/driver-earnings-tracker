@@ -153,7 +153,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 .compareMetricV45:first-child{border-top:0;padding-top:0}
 .compareMetricV45 .label{font-size:12px!important;line-height:1.25!important;color:#64748b}
 .compareMetricV45 .value{font-size:18px!important;font-weight:800!important;line-height:1.2!important;margin-top:4px!important;overflow-wrap:anywhere}
-@media(max-width:420px){.compareSelectorsV45{grid-template-columns:1fr}.compareGridV45{grid-template-columns:1fr}}
+@media(max-width:420px){.compareSelectorsV45{grid-template-columns:1fr 1fr;gap:7px}.compareSelectorsV45 .small{font-size:11px}.compareSelectorsV45 select{font-size:12px;padding:8px 6px}.compareGridV45{grid-template-columns:1fr 1fr;gap:7px}}
 </style>
 
 </head>
@@ -170,7 +170,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <button class="btn alt wide" onclick="openForm('incentive')">＋ Add Incentive</button>
   </div>
   <section class="dashboardAccordionV34" id="todayAccordionV34">
-    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="toggleDashboardAccordionV34('todayAccordionV34')">
+    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false">
       <div><div class="title">Today's Summary</div><div class="hint">Tap to view today's records</div></div>
       <span class="chevron">⌄</span>
     </button>
@@ -178,7 +178,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   </section>
 
   <section class="dashboardAccordionV34" id="monthlyAccordionV34">
-    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="toggleDashboardAccordionV34('monthlyAccordionV34')">
+    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false">
       <div><div class="title">Monthly Dashboard</div><div class="hint">Tap to view this month's earnings, fuel & cashcard</div></div>
       <span class="chevron">⌄</span>
     </button>
@@ -201,7 +201,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   </section>
 
   <section class="dashboardAccordionV34" id="performanceAccordionV34">
-    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false" onclick="toggleDashboardAccordionV34('performanceAccordionV34')">
+    <button class="dashboardAccordionHeaderV34" type="button" aria-expanded="false">
       <div><div class="title">Performance</div><div class="hint">Tap to view trip & fuel performance</div></div>
       <span class="chevron">⌄</span>
     </button>
@@ -317,7 +317,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     </button>
     <div class="reportAccordionBodyV39">
       <div class="card">
-        <div class="small" style="margin-bottom:10px">Choose Week or Month, then select two periods to compare.</div>
+        <div class="small" style="margin-bottom:10px">Choose Week or Month, then use the two selectors below: Period A and Period B.</div>
         <label class="small" for="comparePeriodTypeV45">Compare by</label>
         <select id="comparePeriodTypeV45" onchange="renderPeriodComparisonV45()" style="margin-top:4px">
           <option value="week">Week</option>
@@ -888,30 +888,27 @@ function toggleReportAccordionV45(id){
 function comparePeriodKeysV45(type){
   const dates=reportAvailableDates();
   const today=reportDateKey(new Date());
-  if(!dates.includes(today))dates.push(today);
-  let keys;
+  const keys=new Set();
+  dates.forEach(d=>{
+    if(!d)return;
+    if(type==='week') keys.add(reportWeekKeyFromDate(d));
+    else if(/^\d{4}-\d{2}-\d{2}$/.test(d)) keys.add(d.slice(0,7));
+  });
   if(type==='week'){
-    keys=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
-    // Always provide at least two selectable weeks, even if only one has records.
     const current=reportWeekKeyFromDate(today);
-    if(!keys.includes(current)) keys.unshift(current);
-    if(keys.length<2){
-      const info=reportWeekInfo(current);
-      const prevDate=new Date(info.start+'T12:00:00');
-      prevDate.setDate(prevDate.getDate()-7);
-      keys.push(reportWeekKeyFromDate(reportDateKey(prevDate)));
-    }
+    keys.add(current);
+    const info=reportWeekInfo(current);
+    const prevDate=new Date(info.start+'T12:00:00');
+    prevDate.setDate(prevDate.getDate()-7);
+    keys.add(reportWeekKeyFromDate(reportDateKey(prevDate)));
   }else{
-    keys=[...new Set(dates.map(x=>x.slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)))].sort().reverse();
     const current=today.slice(0,7);
-    if(!keys.includes(current)) keys.unshift(current);
-    if(keys.length<2){
-      const [y,m]=current.split('-').map(Number);
-      const prev=new Date(y,m-2,1);
-      keys.push(reportDateKey(prev).slice(0,7));
-    }
+    keys.add(current);
+    const [y,m]=current.split('-').map(Number);
+    const prev=new Date(y,m-2,1);
+    keys.add(reportDateKey(prev).slice(0,7));
   }
-  return [...new Set(keys)];
+  return [...keys].sort().reverse();
 }
 function comparePeriodLabelV45(type,key){
   return type==='week'?reportWeekInfo(key).label:reportMonthLabel(key);
@@ -963,17 +960,15 @@ function toggleDashboardAccordionV34(id){
   if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
   return open;
 }
-// Reliable tap handlers for iPhone/Safari. Keep the inline handlers too as a fallback.
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('.dashboardAccordionHeaderV34').forEach(btn=>{
-    btn.addEventListener('click',e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      const el=btn.closest('.dashboardAccordionV34');
-      if(el)toggleDashboardAccordionV34(el.id);
-    },{passive:false});
-  });
-});
+// Reliable single tap handler for iPhone/Safari. Uses event delegation so it works consistently.
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.dashboardAccordionHeaderV34');
+  if(!btn)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const el=btn.closest('.dashboardAccordionV34');
+  if(el)toggleDashboardAccordionV34(el.id);
+},{passive:false});
 function renderAll(){
   try{document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
   try{renderDashboard();}catch(e){console.warn('Dashboard render failed',e)}
