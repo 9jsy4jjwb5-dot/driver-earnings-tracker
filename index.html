@@ -1,12 +1,12 @@
-<!-- V51 dashboard/report fixes -->
+<!-- V52 dashboard/report fixes -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V24</title>
-<meta name="app-version" content="24">
+<title>Driver Earnings Tracker V52</title>
+<meta name="app-version" content="52">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -643,7 +643,8 @@ function renderMainMonthlyDashboard(){
  const waiting=t.reduce((a,x)=>a+(Number(x.waiting)||0),0);
  const cancellation=t.reduce((a,x)=>a+(Number(x.cancel)||0),0);
  const incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0);
- const total=tripIncome+waiting+cancellation+incentive;
+ const tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0);
+ const total=tripIncome+waiting+cancellation+tips+incentive;
  const erp=t.reduce((a,x)=>a+(Number(x.erp)||0),0);
  const medisave=total*0.09, after=total-medisave;
  const fuelPaid=f.reduce((a,x)=>a+(Number(x.paid)||0),0);
@@ -677,8 +678,8 @@ function renderMainMonthlyDashboard(){
 
 function renderDashboard(){
  const d=today(), t=db.trips.filter(x=>x.date===d), fu=db.fuel.filter(x=>x.date===d), cc=db.cashcard.filter(x=>x.date===d), inc=(db.incentive||[]).filter(x=>x.date===d);
- const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
- const income=price+wait+can+incentive, medisave=income*0.09, afterMedisave=income-medisave;
+ const trips=t.length, dist=t.reduce((a,x)=>a+x.distance,0), price=t.reduce((a,x)=>a+x.price,0), wait=t.reduce((a,x)=>a+x.waiting,0), can=t.reduce((a,x)=>a+x.cancel,0), erp=t.reduce((a,x)=>a+x.erp,0), tips=t.reduce((a,x)=>a+(Number(x.tips)||0),0), incentive=inc.reduce((a,x)=>a+(Number(x.amount)||0),0), fuel=fu.reduce((a,x)=>a+x.paid,0), top=cc.reduce((a,x)=>a+x.amount,0);
+ const income=price+wait+can+tips+incentive, medisave=income*0.09, afterMedisave=income-medisave;
  const cells=[['Trips',trips],['Distance',dist.toFixed(1)+' km'],['Total Earnings',money(income)],['Tips',money(tips)],['Incentive',money(incentive)],['ERP Reimbursed',money(erp)],['Cancellation Fees',money(can)],['Medisave (9%)',money(medisave)],['Earnings after Medisave',money(afterMedisave)],['Fuel paid',money(fuel)],['CashCard top-ups',money(top)]];
  document.getElementById('summary').innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  const avgTrip=trips?price/trips:0, avgKm=dist?income/dist:0, fuelLit=fu.reduce((a,x)=>a+x.litres,0), avgFuelPrice=fuelLit?fuel/fuelLit:0;
@@ -775,8 +776,8 @@ function populateReportWeekMonthSelectors(){
  const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
  const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
- if(ws){const prev=ws.value;ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(prev))ws.value=prev;}
- if(ms){const prev=ms.value;ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(prev))ms.value=prev;}
+ if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(currentWeek))ws.value=currentWeek;}
+ if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(currentMonth))ms.value=currentMonth;}
 }
 function renderReports(){
  populateReportWeekMonthSelectors();
@@ -844,8 +845,8 @@ function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPic
  const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
  const ws=document.getElementById(weekId), ms=document.getElementById(monthId);
- if(ws){const prev=ws.value;ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(prev))ws.value=prev;}
- if(ms){const prev=ms.value;ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(prev))ms.value=prev;}
+ if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(currentWeek))ws.value=currentWeek;}
+ if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(currentMonth))ms.value=currentMonth;}
  const v=p.value||'day'; const wp=document.getElementById(weekPickerId), mp=document.getElementById(monthPickerId);
  if(wp)wp.style.display=v==='weekSelect'?'block':'none'; if(mp)mp.style.display=v==='monthSelect'?'block':'none';
 }
