@@ -1,4 +1,4 @@
-<!-- V53 consecutive weekly selectors; dashboard left unchanged -->
+<!-- V56 red text for periods with no records; no emoji; based on V55 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -789,7 +789,7 @@ function periodOptionHtml(key,type){
  if(type==='week'){const info=reportWeekInfo(key);start=info.start;end=info.end;label=info.label;}
  else {const [y,m]=key.split('-').map(Number);start=reportDateKey(new Date(y,m-1,1));end=reportDateKey(new Date(y,m,0));label=reportMonthLabel(key);}
  const has=periodHasAnyRecords(start,end);
- const shown=has?label:`🔴 ${label} — No records`;
+ const shown=has?label:`${label} — No records`;
  return `<option value="${key}"${has?'':' class="noRecordsOption" style="color:#c62828;font-weight:700"'}>${shown}</option>`;
 }
 function populateReportWeekMonthSelectors(){
