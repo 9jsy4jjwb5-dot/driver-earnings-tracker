@@ -1,11 +1,11 @@
-<!-- V52 dashboard/report fixes -->
+<!-- V53 consecutive weekly selectors; dashboard left unchanged -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V52</title>
+<title>Driver Earnings Tracker V53</title>
 <meta name="app-version" content="52">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -765,6 +765,20 @@ function reportWeekKeyFromDate(dateStr){
 function reportAvailableDates(){
  return [...(db.trips||[]),...(db.fuel||[]),...(db.cashcard||[]),...(db.incentive||[])].map(x=>x.date).filter(Boolean);
 }
+function consecutiveWeekKeys(sourceDates=[]){
+ const todayKey=reportDateKey(new Date());
+ const valid=(sourceDates||[]).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+ let startDate=valid.length?new Date(valid[0]+'T12:00:00'):new Date(todayKey+'T12:00:00');
+ const today=new Date(todayKey+'T12:00:00');
+ // If there is no historical data, still offer the current week and 11 prior weeks.
+ if(!valid.length) startDate.setDate(startDate.getDate()-77);
+ const day=startDate.getDay()||7; startDate.setDate(startDate.getDate()-(day-1));
+ const endDay=today.getDay()||7; today.setDate(today.getDate()-(endDay-1));
+ const keys=[];
+ for(let d=new Date(startDate);d<=today;d.setDate(d.getDate()+7)){ keys.push(reportWeekKeyFromDate(reportDateKey(d))); }
+ const current=reportWeekKeyFromDate(todayKey); if(!keys.includes(current))keys.push(current);
+ return [...new Set(keys)].sort().reverse();
+}
 function populateReportWeekMonthSelectors(){
  const dates=reportAvailableDates();
  const today=new Date();
@@ -773,7 +787,7 @@ function populateReportWeekMonthSelectors(){
  const previousWeekDate=new Date(today); previousWeekDate.setDate(previousWeekDate.getDate()-7);
  const previousMonthDate=new Date(today.getFullYear(),today.getMonth()-1,1);
  dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
- const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
+ const weeks=consecutiveWeekKeys(dates);
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
  const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
  if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(currentWeek))ws.value=currentWeek;}
@@ -842,7 +856,7 @@ function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPic
  const previousWeekDate=new Date(today); previousWeekDate.setDate(previousWeekDate.getDate()-7);
  const previousMonthDate=new Date(today.getFullYear(),today.getMonth()-1,1);
  dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
- const weeks=[...new Set(dates.map(reportWeekKeyFromDate))].sort().reverse();
+ const weeks=consecutiveWeekKeys(dates);
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
  const ws=document.getElementById(weekId), ms=document.getElementById(monthId);
  if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(currentWeek))ws.value=currentWeek;}
@@ -902,26 +916,12 @@ function toggleReportAccordionV45(id){
 function comparePeriodKeysV45(type){
   const dates=reportAvailableDates();
   const today=reportDateKey(new Date());
+  if(type==='week') return consecutiveWeekKeys(dates);
   const keys=new Set();
-  dates.forEach(d=>{
-    if(!d)return;
-    if(type==='week') keys.add(reportWeekKeyFromDate(d));
-    else if(/^\d{4}-\d{2}-\d{2}$/.test(d)) keys.add(d.slice(0,7));
-  });
-  if(type==='week'){
-    const current=reportWeekKeyFromDate(today);
-    keys.add(current);
-    const info=reportWeekInfo(current);
-    const prevDate=new Date(info.start+'T12:00:00');
-    prevDate.setDate(prevDate.getDate()-7);
-    keys.add(reportWeekKeyFromDate(reportDateKey(prevDate)));
-  }else{
-    const current=today.slice(0,7);
-    keys.add(current);
-    const [y,m]=current.split('-').map(Number);
-    const prev=new Date(y,m-2,1);
-    keys.add(reportDateKey(prev).slice(0,7));
-  }
+  dates.forEach(d=>{if(/^\d{4}-\d{2}-\d{2}$/.test(d))keys.add(d.slice(0,7));});
+  const current=today.slice(0,7); keys.add(current);
+  const [y,m]=current.split('-').map(Number);
+  for(let i=1;i<=11;i++){const d=new Date(y,m-1-i,1);keys.add(reportDateKey(d).slice(0,7));}
   return [...keys].sort().reverse();
 }
 function comparePeriodLabelV45(type,key){
