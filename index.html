@@ -1065,5 +1065,35 @@ try{renderAll();populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();p
   document.addEventListener('click',function(e){const t=e.target.closest('button'); if(!t)return; const txt=(t.textContent||'').trim(); if(txt.includes('Recover Records')){e.preventDefault();e.stopImmediatePropagation();recover();} else if(txt.includes('Export Backup')){e.preventDefault();e.stopImmediatePropagation();exportData();}},true);
 })();
 </script>
+
+<style>
+/* Custom period selector: avoids iOS native option-color limitations. */
+.customPeriodSelect{position:relative;width:100%;margin-top:4px;font:inherit}
+.customPeriodButton{width:100%;min-height:42px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#111827;text-align:left;display:flex;justify-content:space-between;align-items:center;font:inherit}
+.customPeriodMenu{position:absolute;z-index:9999;left:0;right:0;top:calc(100% + 4px);max-height:260px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);display:none}
+.customPeriodMenu.open{display:block}
+.customPeriodOption{display:block;width:100%;padding:11px 12px;border:0;border-bottom:1px solid #eef2f7;background:#fff;color:#111827;text-align:left;font:inherit}
+.customPeriodOption.noRecords{color:#c62828;font-weight:700}
+.customPeriodOption[aria-selected="true"]{background:#f1f5f9}
+</style>
+<script>
+(function(){
+ const ids=['reportWeek','reportMonth','monthlyDashboardWeek','monthlyDashboardMonth','fuelAnalysisWeek','fuelAnalysisMonth','compareASelectV45','compareBSelectV45'];
+ function enhance(sel){if(!sel||sel.dataset.customEnhanced==='1')return;sel.dataset.customEnhanced='1';
+  const wrap=document.createElement('div');wrap.className='customPeriodSelect';
+  const btn=document.createElement('button');btn.type='button';btn.className='customPeriodButton';btn.setAttribute('aria-expanded','false');
+  const label=document.createElement('span'), arrow=document.createElement('span');arrow.textContent='▾';btn.append(label,arrow);
+  const menu=document.createElement('div');menu.className='customPeriodMenu';menu.setAttribute('role','listbox');
+  sel.parentNode.insertBefore(wrap,sel);wrap.append(btn,menu);sel.style.display='none';
+  function paint(){const opt=sel.options[sel.selectedIndex];label.textContent=opt?opt.textContent:'Choose a period';menu.innerHTML='';Array.from(sel.options).forEach(o=>{const b=document.createElement('button');b.type='button';b.className='customPeriodOption'+(o.classList.contains('noRecordsOption')?' noRecords':'');b.textContent=o.textContent;b.setAttribute('role','option');b.setAttribute('aria-selected',o.value===sel.value?'true':'false');b.addEventListener('click',()=>{sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}));paint();menu.classList.remove('open');btn.setAttribute('aria-expanded','false');});menu.appendChild(b);});}
+  btn.addEventListener('click',()=>{const open=!menu.classList.contains('open');document.querySelectorAll('.customPeriodMenu.open').forEach(m=>m.classList.remove('open'));menu.classList.toggle('open',open);btn.setAttribute('aria-expanded',open?'true':'false');paint();});
+  sel.addEventListener('change',paint);const observer=new MutationObserver(paint);observer.observe(sel,{childList:true,subtree:true});paint();
+ }
+ function init(){ids.forEach(id=>enhance(document.getElementById(id)));}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+ document.addEventListener('click',e=>{if(!e.target.closest('.customPeriodSelect'))document.querySelectorAll('.customPeriodMenu.open').forEach(m=>{m.classList.remove('open');const b=m.parentNode.querySelector('.customPeriodButton');if(b)b.setAttribute('aria-expanded','false');});});
+})();
+</script>
+
 </body>
 </html>
