@@ -229,6 +229,13 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div id="incentiveList" class="card" style="margin-top:12px"></div>
 </section>
 
+<section id="expenses" class="page">
+  <div class="section-title">Expenses</div>
+  <div class="small" style="margin-bottom:12px">Separate expense records only. No GST or Medisave calculations are applied.</div>
+  <button class="btn" type="button" onclick="openForm('expense')">＋ Add Expense</button>
+  <div id="expenseList" class="card" style="margin-top:12px"></div>
+</section>
+
 <section id="reports" class="page">
   <div class="section-title">Reports</div>
 
@@ -360,6 +367,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 <button class="navbtn" data-page="trips">🚕<br>Trips</button>
 <button class="navbtn" data-page="fuel">⛽<br>Fuel</button>
 <button class="navbtn" data-page="incentive">🎁<br>Incentive</button>
+<button class="navbtn" data-page="expenses">🧾<br>Expenses</button>
 <button class="navbtn" data-page="reports">▥<br>Reports</button>
 <button class="navbtn" data-page="more">•••<br>More</button>
 </div></nav>
@@ -383,7 +391,8 @@ function cleanDB(x){
     trips:Array.isArray(x.trips)?x.trips:[],
     fuel:Array.isArray(x.fuel)?x.fuel:[],
     cashcard:Array.isArray(x.cashcard)?x.cashcard:(Array.isArray(x.cash)?x.cash:[]),
-    incentive:Array.isArray(x.incentive)?x.incentive:[]
+    incentive:Array.isArray(x.incentive)?x.incentive:[],
+    expenses:Array.isArray(x.expenses)?x.expenses:[]
   };
 }
 function readJSONKey(k){
@@ -454,15 +463,16 @@ function loadDB(){
   const main=readMainDB();
   if(recordCount(main)>0) return main;
   const b=bestSavedDB();
-  return b?b.data:{trips:[],fuel:[],cashcard:[],incentive:[]};
+  return b?b.data:{trips:[],fuel:[],cashcard:[],incentive:[],expenses:[]};
 }
-let db=loadDB();
+let db=loadDB(); db.expenses=Array.isArray(db.expenses)?db.expenses:[];
 function save(){
   const clean={
     trips:Array.isArray(db.trips)?db.trips:[],
     fuel:Array.isArray(db.fuel)?db.fuel:[],
     cashcard:Array.isArray(db.cashcard)?db.cashcard:[],
-    incentive:Array.isArray(db.incentive)?db.incentive:[]
+    incentive:Array.isArray(db.incentive)?db.incentive:[],
+    expenses:Array.isArray(db.expenses)?db.expenses:[]
   };
   const raw=JSON.stringify(clean);
   localStorage.setItem(KEY,raw);
@@ -477,7 +487,7 @@ function restoreIfMainKeyMissing(){
   if(recordCount(main)>0){db=main;return false;}
   const b=bestSavedDB();
   if(b){try{localStorage.setItem(KEY,JSON.stringify(b.data));db=b.data;updateBackupStatus(b.key);return true;}catch(e){}}
-  db=main||{trips:[],fuel:[],cashcard:[],incentive:[]};
+  db=main||{trips:[],fuel:[],cashcard:[],incentive:[],expenses:[]};
   return false;
 }
 function syncFromStorage(){
@@ -550,6 +560,18 @@ function openForm(type, editId=null){
    <button class="btn">${existing?'Update Incentive':'Save Incentive'}</button>
    <button type="button" class="btn alt" onclick="openPage('incentive')">Cancel</button>`;
  }
+ if(type==='expense'){
+   const x=existing||{date:today(),amount:'',description:'Car servicing'};
+   title=existing?'Edit Expense':'Add Expense';
+   f.innerHTML=`
+   <div class="field"><label>Date</label><input id="date" type="date" required value="${x.date||today()}"></div>
+   <div class="field"><label>Amount spent ($)</label><input id="amount" type="number" step="0.01" min="0" required value="${x.amount??''}"></div>
+   <div class="field"><label>Description</label><select id="description" required>
+     ${['Car servicing','Change tires','Change batteries','Car repair'].map(v=>`<option value="${v}" ${x.description===v?'selected':''}>${v}</option>`).join('')}
+   </select></div>
+   <button class="btn">${existing?'Update Expense':'Save Expense'}</button>
+   <button type="button" class="btn alt" onclick="openPage('expenses')">Cancel</button>`;
+ }
  document.getElementById('formTitle').textContent=title;
  f.onsubmit=e=>{
    e.preventDefault();
@@ -569,7 +591,11 @@ function openForm(type, editId=null){
      const data={date:date.value,amount:+amount.value};
      if(existing) Object.assign(existing,data); else db.incentive.push({id:crypto.randomUUID(),...data});
    }
-   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':type==='incentive'?'incentive':'more');
+   if(type==='expense'){
+     const data={date:date.value,amount:+amount.value,description:document.getElementById('description').value};
+     if(existing) Object.assign(existing,data); else {db.expenses=db.expenses||[];db.expenses.push({id:crypto.randomUUID(),...data});}
+   }
+   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':type==='incentive'?'incentive':type==='expense'?'expenses':'more');
  };
 }
 
@@ -621,6 +647,8 @@ function normalizeDB(){
     ...x, id:x.id ?? ('cash-'+i+'-'+Date.now()), date:x.date||'',
     amount:Number(x.amount ?? x.topup ?? 0)||0
   }));
+  const expenseSrc = Array.isArray(src.expenses)?src.expenses:[];
+  db.expenses = expenseSrc.map((x,i)=>({...x,id:x.id ?? ('expense-'+i+'-'+Date.now()),date:x.date||'',amount:Number(x.amount ?? 0)||0,description:String(x.description||'')}));
   const incentiveSrc = Array.isArray(src.incentive)?src.incentive:[];
   db.incentive = incentiveSrc.map((x,i)=>({
     ...x, id:x.id ?? ('incentive-'+i+'-'+Date.now()), date:x.date||'',
@@ -740,6 +768,16 @@ function renderIncentive(){
  rows.forEach((x,i)=>{const amount=Number(x.amount)||0,id=String(x.id??('incentive-'+i));html+=`<div class="item"><div><b>${fmtDate(String(x.date||''))}</b></div><div style="text-align:right"><b>${money(amount)}</b><br><span class="small">After 9%: ${money(amount*0.91)}</span><br><button type="button" class="editBtn" data-type="incentive" data-id="${id}">Edit</button> <button type="button" class="deleteBtn" data-type="incentive" data-id="${id}">Delete</button></div></div>`;});
  el.innerHTML=html;
 }
+function renderExpenses(){
+ const el=document.getElementById('expenseList'); if(!el)return;
+ const rows=Array.isArray(db.expenses)?db.expenses.slice():[];
+ if(!rows.length){el.innerHTML='<div class="empty">No expenses recorded yet.</div>';return;}
+ rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ const total=rows.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
+ el.innerHTML=`<div class="small" style="margin-bottom:12px">Records: <b>${rows.length}</b> · Total expenses: <b>${money(total)}</b></div>`+rows.map((x,i)=>`<div class="item"><div><b>${fmtDate(String(x.date||''))}</b><br><span class="small">${escapeExpenseText(x.description||'')}</span></div><div style="text-align:right"><b>${money(x.amount)}</b><br><button type="button" class="editBtn" data-type="expense" data-id="${x.id??('expense-'+i)}">Edit</button> <button type="button" class="deleteBtn" data-type="expenses" data-id="${x.id??('expense-'+i)}">Delete</button></div></div>`).join('');
+}
+function escapeExpenseText(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
 function reportDateKey(d){
  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
  return `${y}-${m}-${day}`;
@@ -901,7 +939,7 @@ function renderMonthlyDashboard(){
  grid.innerHTML=cells.map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
-function del(type,id){if(confirm('Delete this record?')){db[type]=db[type].filter(x=>String(x.id)!==String(id));save();renderAll()}}
+function del(type,id){if(confirm('Delete this record?')){const key=type==='trip'?'trips':type; if(Array.isArray(db[key]))db[key]=db[key].filter(x=>String(x.id)!==String(id));save();renderAll()}}
 
 // Safe edit/delete click handling. Uses event delegation so dynamically-rendered
 // buttons work reliably on iPhone Safari without inline JavaScript handlers.
@@ -997,6 +1035,7 @@ function renderAll(){
   try{renderFuel();}catch(e){console.warn('Fuel render failed',e)}
   try{renderCash();}catch(e){console.warn('CashCard render failed',e)}
   try{renderIncentive();}catch(e){console.warn('Incentive render failed',e)}
+  try{renderExpenses();}catch(e){console.warn('Expenses render failed',e)}
   try{renderReports();}catch(e){console.warn('Reports render failed',e)}
   try{renderPeriodComparisonV45();}catch(e){console.warn('Comparison render failed',e)}
   try{populateMonthlyDashboardMonthSelect();renderMonthlyDashboard();}catch(e){console.warn('Monthly dashboard render failed',e)}
