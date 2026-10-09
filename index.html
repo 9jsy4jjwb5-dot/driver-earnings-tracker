@@ -147,6 +147,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 <style id="comparisonV45">
 .compareSelectorsV45{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .compareSelectorsV45 select{margin-top:4px}
+.noRecordsOption{color:#c62828;font-weight:700}
 .compareGridV45{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .compareCardV45{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:11px;min-width:0}
 .compareCardV45 .comparePeriodTitleV45{font-size:13px;font-weight:800;color:#183f78;margin-bottom:9px;line-height:1.25}
@@ -779,6 +780,18 @@ function consecutiveWeekKeys(sourceDates=[]){
  const current=reportWeekKeyFromDate(todayKey); if(!keys.includes(current))keys.push(current);
  return [...new Set(keys)].sort().reverse();
 }
+function periodHasAnyRecords(startStr,endStr){
+ const inRange=x=>x&&x.date&&x.date>=startStr&&x.date<=endStr;
+ return [...(db.trips||[]),...(db.fuel||[]),...(db.cashcard||[]),...(db.incentive||[])].some(inRange);
+}
+function periodOptionHtml(key,type){
+ let start,end,label;
+ if(type==='week'){const info=reportWeekInfo(key);start=info.start;end=info.end;label=info.label;}
+ else {const [y,m]=key.split('-').map(Number);start=reportDateKey(new Date(y,m-1,1));end=reportDateKey(new Date(y,m,0));label=reportMonthLabel(key);}
+ const has=periodHasAnyRecords(start,end);
+ const shown=has?label:`🔴 ${label} — No records`;
+ return `<option value="${key}"${has?'':' class="noRecordsOption" style="color:#c62828;font-weight:700"'}>${shown}</option>`;
+}
 function populateReportWeekMonthSelectors(){
  const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
  const previousWeekSelection=ws?.value||'', previousMonthSelection=ms?.value||'';
@@ -791,8 +804,8 @@ function populateReportWeekMonthSelectors(){
  dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
  const weeks=consecutiveWeekKeys(dates);
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
- if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');ws.value=weeks.includes(previousWeekSelection)?previousWeekSelection:(weeks.includes(currentWeek)?currentWeek:(weeks[0]||''));}
- if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');ms.value=months.includes(previousMonthSelection)?previousMonthSelection:(months.includes(currentMonth)?currentMonth:(months[0]||''));}
+ if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>periodOptionHtml(k,'week')).join('');ws.value=weeks.includes(previousWeekSelection)?previousWeekSelection:(weeks.includes(currentWeek)?currentWeek:(weeks[0]||''));}
+ if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>periodOptionHtml(k,'month')).join('');ms.value=months.includes(previousMonthSelection)?previousMonthSelection:(months.includes(currentMonth)?currentMonth:(months[0]||''));}
 }
 function renderReports(){
  populateReportWeekMonthSelectors();
@@ -861,8 +874,8 @@ function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPic
  dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
  const weeks=consecutiveWeekKeys(dates);
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
- if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');ws.value=weeks.includes(previousWeekSelection)?previousWeekSelection:(weeks.includes(currentWeek)?currentWeek:(weeks[0]||''));}
- if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');ms.value=months.includes(previousMonthSelection)?previousMonthSelection:(months.includes(currentMonth)?currentMonth:(months[0]||''));}
+ if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>periodOptionHtml(k,'week')).join('');ws.value=weeks.includes(previousWeekSelection)?previousWeekSelection:(weeks.includes(currentWeek)?currentWeek:(weeks[0]||''));}
+ if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>periodOptionHtml(k,'month')).join('');ms.value=months.includes(previousMonthSelection)?previousMonthSelection:(months.includes(currentMonth)?currentMonth:(months[0]||''));}
  const v=p.value||'day'; const wp=document.getElementById(weekPickerId), mp=document.getElementById(monthPickerId);
  if(wp)wp.style.display=v==='weekSelect'?'block':'none'; if(mp)mp.style.display=v==='monthSelect'?'block':'none';
 }
@@ -951,7 +964,7 @@ function populatePeriodComparisonSelectorsV45(){
   const a=document.getElementById('compareASelectV45'), b=document.getElementById('compareBSelectV45');
   if(!a||!b)return;
   const oldA=a.value,oldB=b.value;
-  const opts=keys.map(k=>`<option value="${k}">${comparePeriodLabelV45(type,k)}</option>`).join('');
+  const opts=keys.map(k=>periodOptionHtml(k,type)).join('');
   a.innerHTML=opts;b.innerHTML=opts;
   if(keys.includes(oldA))a.value=oldA; else if(keys.length)a.value=keys[0];
   if(keys.includes(oldB))b.value=oldB; else if(keys.length>1)b.value=keys[1]; else if(keys.length)b.value=keys[0];
