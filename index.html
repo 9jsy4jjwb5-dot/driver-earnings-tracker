@@ -233,6 +233,13 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div class="section-title">Expenses</div>
   <div class="small" style="margin-bottom:12px">Separate expense records only. No GST or Medisave calculations are applied.</div>
   <button class="btn" type="button" onclick="openForm('expense')">＋ Add Expense</button>
+  <div class="card" style="margin-top:12px">
+    <div class="section-title" style="font-size:16px;margin-bottom:10px">Find Expenses by Month & Year</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field" style="margin:0"><label for="expenseYearFilter">Year</label><select id="expenseYearFilter" onchange="renderExpenses()"><option value="all">All years</option></select></div>
+      <div class="field" style="margin:0"><label for="expenseMonthFilter">Month</label><select id="expenseMonthFilter" onchange="renderExpenses()"><option value="all">All months</option></select></div>
+    </div>
+  </div>
   <div id="expenseList" class="card" style="margin-top:12px"></div>
 </section>
 
@@ -770,9 +777,17 @@ function renderIncentive(){
 }
 function renderExpenses(){
  const el=document.getElementById('expenseList'); if(!el)return;
- const rows=Array.isArray(db.expenses)?db.expenses.slice():[];
- if(!rows.length){el.innerHTML='<div class="empty">No expenses recorded yet.</div>';return;}
+ const allRows=Array.isArray(db.expenses)?db.expenses.slice():[];
+ const yearSel=document.getElementById('expenseYearFilter'), monthSel=document.getElementById('expenseMonthFilter');
+ const oldYear=yearSel?yearSel.value:'all', oldMonth=monthSel?monthSel.value:'all';
+ const years=[...new Set(allRows.map(x=>String(x.date||'').slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort((a,b)=>b.localeCompare(a));
+ const currentYear=String(new Date().getFullYear()); if(!years.includes(currentYear))years.unshift(currentYear);
+ if(yearSel){yearSel.innerHTML='<option value="all">All years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');yearSel.value=years.includes(oldYear)?oldYear:'all';}
+ if(monthSel){const months=['January','February','March','April','May','June','July','August','September','October','November','December'];monthSel.innerHTML='<option value="all">All months</option>'+months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');monthSel.value=/^(0[1-9]|1[0-2])$/.test(oldMonth)?oldMonth:'all';}
+ const selectedYear=yearSel?.value||'all', selectedMonth=monthSel?.value||'all';
+ const rows=allRows.filter(x=>{const d=String(x.date||'');return (selectedYear==='all'||d.slice(0,4)===selectedYear)&&(selectedMonth==='all'||d.slice(5,7)===selectedMonth);});
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ if(!rows.length){el.innerHTML=`<div class="small" style="margin-bottom:12px">Records: <b>0</b> · Total expenses: <b>${money(0)}</b></div><div class="empty">No expenses recorded for this selection.</div>`;return;}
  const total=rows.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
  el.innerHTML=`<div class="small" style="margin-bottom:12px">Records: <b>${rows.length}</b> · Total expenses: <b>${money(total)}</b></div>`+rows.map((x,i)=>`<div class="item"><div><b>${fmtDate(String(x.date||''))}</b><br><span class="small">${escapeExpenseText(x.description||'')}</span></div><div style="text-align:right"><b>${money(x.amount)}</b><br><button type="button" class="editBtn" data-type="expense" data-id="${x.id??('expense-'+i)}">Edit</button> <button type="button" class="deleteBtn" data-type="expenses" data-id="${x.id??('expense-'+i)}">Delete</button></div></div>`).join('');
 }
