@@ -780,6 +780,8 @@ function consecutiveWeekKeys(sourceDates=[]){
  return [...new Set(keys)].sort().reverse();
 }
 function populateReportWeekMonthSelectors(){
+ const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
+ const previousWeekSelection=ws?.value||'', previousMonthSelection=ms?.value||'';
  const dates=reportAvailableDates();
  const today=new Date();
  const todayKey=reportDateKey(today);
@@ -789,9 +791,8 @@ function populateReportWeekMonthSelectors(){
  dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
  const weeks=consecutiveWeekKeys(dates);
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
- const ws=document.getElementById('reportWeek'), ms=document.getElementById('reportMonth');
- if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(currentWeek))ws.value=currentWeek;}
- if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(currentMonth))ms.value=currentMonth;}
+ if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');ws.value=weeks.includes(previousWeekSelection)?previousWeekSelection:(weeks.includes(currentWeek)?currentWeek:(weeks[0]||''));}
+ if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');ms.value=months.includes(previousMonthSelection)?previousMonthSelection:(months.includes(currentMonth)?currentMonth:(months[0]||''));}
 }
 function renderReports(){
  populateReportWeekMonthSelectors();
@@ -849,6 +850,8 @@ function availableReportDashboardMonths(){
 }
 function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPickerId){
  const p=document.getElementById(periodId); if(!p)return;
+ const ws=document.getElementById(weekId), ms=document.getElementById(monthId);
+ const previousWeekSelection=ws?.value||'', previousMonthSelection=ms?.value||'';
  const dates=reportAvailableDates();
  const today=new Date();
  const todayKey=reportDateKey(today);
@@ -858,9 +861,8 @@ function populatePeriodSelectorSet(periodId,weekId,monthId,weekPickerId,monthPic
  dates.push(reportDateKey(previousWeekDate),reportDateKey(previousMonthDate));
  const weeks=consecutiveWeekKeys(dates);
  const months=[...new Set(dates.map(x=>x.slice(0,7)))].sort().reverse();
- const ws=document.getElementById(weekId), ms=document.getElementById(monthId);
- if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');if(weeks.includes(currentWeek))ws.value=currentWeek;}
- if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');if(months.includes(currentMonth))ms.value=currentMonth;}
+ if(ws){const currentWeek=reportWeekKeyFromDate(todayKey);ws.innerHTML=weeks.map(k=>`<option value="${k}">${reportWeekInfo(k).label}</option>`).join('');ws.value=weeks.includes(previousWeekSelection)?previousWeekSelection:(weeks.includes(currentWeek)?currentWeek:(weeks[0]||''));}
+ if(ms){const currentMonth=todayKey.slice(0,7);ms.innerHTML=months.map(k=>`<option value="${k}">${reportMonthLabel(k)}</option>`).join('');ms.value=months.includes(previousMonthSelection)?previousMonthSelection:(months.includes(currentMonth)?currentMonth:(months[0]||''));}
  const v=p.value||'day'; const wp=document.getElementById(weekPickerId), mp=document.getElementById(monthPickerId);
  if(wp)wp.style.display=v==='weekSelect'?'block':'none'; if(mp)mp.style.display=v==='monthSelect'?'block':'none';
 }
