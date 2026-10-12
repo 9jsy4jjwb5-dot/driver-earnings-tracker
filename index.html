@@ -406,7 +406,7 @@ function readJSONKey(k){
   try{const raw=localStorage.getItem(k); if(!raw)return null; return cleanDB(JSON.parse(raw));}catch(e){return null;}
 }
 function readMainDB(){return readJSONKey(KEY);}
-function recordCount(x){return x?(x.trips?.length||0)+(x.fuel?.length||0)+(x.cashcard?.length||0)+(x.incentive?.length||0):0;}
+function recordCount(x){return x?(x.trips?.length||0)+(x.fuel?.length||0)+(x.cashcard?.length||0)+(x.incentive?.length||0)+(x.expenses?.length||0):0;}
 function backupCandidates(){
   const keys=[KEY,"driverEarningsBackupV15","driverEarningsBackupV15_2","driverEarningsBackupV14","driverEarningsBackupV14_2","driverEarningsDB","driver_earnings_db","driverEarnings","earningsDB"];
   const out=[];
@@ -445,24 +445,45 @@ function recoverSavedRecords(){
   setTimeout(()=>location.reload(),50);
   return true;
 }
-function exportBestBackup(){
+async function exportBestBackup(){
   const b=bestSavedDB();
-  if(!b){alert('No saved records found to export.');return;}
+  if(!b){alert('No saved records found to export.');return false;}
   try{
+    // Export from the best saved copy; do not modify or overwrite browser data.
     const raw=JSON.stringify(b.data,null,2);
-    // Export directly from the best saved copy. Rendering is not involved.
-    const blob=new Blob([raw],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='driver-earnings-backup-'+new Date().toISOString().slice(0,10)+'.json';
-    a.style.display='none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    const filename='driver-earnings-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    const file=new File([raw],filename,{type:'application/json'});
     updateBackupStatus(b.key);
-  }catch(e){alert('Could not export the saved records from this browser.');}
+    // iPhone/iPad Safari: use the native Share sheet when file sharing is supported.
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({files:[file],title:'Driver Earnings Backup'});
+        return true;
+      }catch(e){
+        if(e && e.name==='AbortError') return false;
+        // Continue to the browser fallback if native sharing fails for another reason.
+      }
+    }
+    // Fallback: open the JSON file in a new tab so it can be saved/shared manually.
+    const blob=new Blob([raw],{type:'application/json;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const opened=window.open(url,'_blank');
+    if(opened){
+      setTimeout(()=>{try{URL.revokeObjectURL(url);}catch(e){}},60000);
+      alert('Backup opened in a new tab. Use the Share button in Safari to save it to Files.');
+      return true;
+    }
+    // Last fallback for browsers that block a new tab.
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;a.target='_blank';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>{try{URL.revokeObjectURL(url);}catch(e){}},60000);
+    alert('If the file did not download, allow the new tab or use Safari’s Share menu to save the backup.');
+    return true;
+  }catch(e){
+    alert('Could not export the saved records. Your saved records have not been intentionally changed.');
+    return false;
+  }
 }
 function exportBackup(){return exportBestBackup();}
 function importBackupFile(file){if(!file)return;const reader=new FileReader();reader.onload=function(){try{const parsed=JSON.parse(reader.result);const clean=cleanDB(parsed);if(recordCount(clean)===0){alert('This backup contains no records, so nothing was imported.');return;}localStorage.setItem(KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY,JSON.stringify(clean));localStorage.setItem(BACKUP_KEY_2,JSON.stringify(clean));db=clean;renderAll();if(typeof renderFuelReport==='function')renderFuelReport('month');updateBackupStatus('imported backup');alert('Backup imported successfully.');openPage('trips');}catch(e){alert('Invalid backup file.');}};reader.readAsText(file);}
