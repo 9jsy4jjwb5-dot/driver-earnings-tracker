@@ -158,6 +158,17 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 @media(max-width:420px){.compareSelectorsV45{grid-template-columns:1fr 1fr;gap:7px}.compareSelectorsV45 .small{font-size:11px}.compareSelectorsV45 select{font-size:12px;padding:8px 6px}.compareGridV45{grid-template-columns:1fr 1fr;gap:7px}}
 </style>
 
+
+<style id="rentalCalendarStylesV1">
+.rentalCalendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.rentalCalendarWeekday{text-align:center;font-size:10px;font-weight:800;color:#64748b;padding:4px 0}
+.rentalDay{min-width:0;min-height:76px;padding:7px 2px;border:1px solid #dbe2eb;border-radius:9px;background:#fff;color:#14233b;text-align:center;font:inherit;display:flex;flex-direction:column;align-items:center;gap:5px}
+.rentalDay .dayNum{font-size:13px;font-weight:800;line-height:1.15}.rentalDay .dayRate{display:block;font-size:11px;font-weight:800;line-height:1.2;overflow-wrap:anywhere;margin-top:1px}
+.rentalDay.offDay{background:#fff0f0;border-color:#e99;color:#b42318}.rentalDay.emptyDay{border:0;background:transparent;min-height:0}
+.rentalDay .offLabel{font-size:9px;font-weight:800}
+@media(max-width:380px){.rentalCalendarGrid{gap:3px}.rentalDay{min-height:70px}.rentalDay .dayRate{font-size:10px}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -239,6 +250,15 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
       <div class="field" style="margin:0"><label for="expenseYearFilter">Year</label><select id="expenseYearFilter" onchange="renderExpenses()"><option value="all">All years</option></select></div>
       <div class="field" style="margin:0"><label for="expenseMonthFilter">Month</label><select id="expenseMonthFilter" onchange="renderExpenses()"><option value="all">All months</option></select></div>
     </div>
+  </div>
+  <div class="card" id="rentalCalendarPanel" style="margin-top:12px">
+    <div class="section-title" style="font-size:16px;margin-bottom:10px">Monthly Rental Calendar</div>
+    <div class="field"><label for="rentalCalendarMonth">Calendar month</label><input id="rentalCalendarMonth" type="month" onchange="renderRentalCalendar()"></div>
+    <div class="field" style="margin-top:10px"><label for="monthlyRentalAmount">Monthly rental ($)</label><input id="monthlyRentalAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter monthly rental" oninput="saveMonthlyRentalInput()"></div>
+    <div id="rentalCalendarSummary" class="small" style="margin:10px 0 12px"></div>
+    <div class="small" style="margin-bottom:8px">Tap a calendar day to mark or unmark it as an off day. Rental is divided equally across the remaining payable days.</div>
+    <div class="rentalCalendarGrid" id="rentalCalendarGrid"></div>
+    <div class="small" style="margin-top:10px">Off days are saved separately from expenses. The monthly rental stays fixed; marking an off day recalculates the daily amount for all remaining payable days.</div>
   </div>
   <div id="expenseList" class="card" style="margin-top:12px"></div>
 </section>
@@ -399,7 +419,9 @@ function cleanDB(x){
     fuel:Array.isArray(x.fuel)?x.fuel:[],
     cashcard:Array.isArray(x.cashcard)?x.cashcard:(Array.isArray(x.cash)?x.cash:[]),
     incentive:Array.isArray(x.incentive)?x.incentive:[],
-    expenses:Array.isArray(x.expenses)?x.expenses:[]
+    expenses:Array.isArray(x.expenses)?x.expenses:[],
+    rentalByMonth:x.rentalByMonth&&typeof x.rentalByMonth==='object'?x.rentalByMonth:{},
+    offDays:Array.isArray(x.offDays)?x.offDays:[]
   };
 }
 function readJSONKey(k){
@@ -493,14 +515,16 @@ function loadDB(){
   const b=bestSavedDB();
   return b?b.data:{trips:[],fuel:[],cashcard:[],incentive:[],expenses:[]};
 }
-let db=loadDB(); db.expenses=Array.isArray(db.expenses)?db.expenses:[];
+let db=loadDB(); db.expenses=Array.isArray(db.expenses)?db.expenses:[]; db.rentalByMonth=db.rentalByMonth&&typeof db.rentalByMonth==='object'?db.rentalByMonth:{}; db.offDays=Array.isArray(db.offDays)?db.offDays:[];
 function save(){
   const clean={
     trips:Array.isArray(db.trips)?db.trips:[],
     fuel:Array.isArray(db.fuel)?db.fuel:[],
     cashcard:Array.isArray(db.cashcard)?db.cashcard:[],
     incentive:Array.isArray(db.incentive)?db.incentive:[],
-    expenses:Array.isArray(db.expenses)?db.expenses:[]
+    expenses:Array.isArray(db.expenses)?db.expenses:[],
+    rentalByMonth:db.rentalByMonth&&typeof db.rentalByMonth==='object'?db.rentalByMonth:{},
+    offDays:Array.isArray(db.offDays)?db.offDays:[]
   };
   const raw=JSON.stringify(clean);
   localStorage.setItem(KEY,raw);
@@ -796,7 +820,44 @@ function renderIncentive(){
  rows.forEach((x,i)=>{const amount=Number(x.amount)||0,id=String(x.id??('incentive-'+i));html+=`<div class="item"><div><b>${fmtDate(String(x.date||''))}</b></div><div style="text-align:right"><b>${money(amount)}</b><br><span class="small">After 9%: ${money(amount*0.91)}</span><br><button type="button" class="editBtn" data-type="incentive" data-id="${id}">Edit</button> <button type="button" class="deleteBtn" data-type="incentive" data-id="${id}">Delete</button></div></div>`;});
  el.innerHTML=html;
 }
+function currentRentalMonthKey(){
+ const el=document.getElementById('rentalCalendarMonth');
+ if(el&&/^\d{4}-\d{2}$/.test(el.value))return el.value;
+ const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function saveMonthlyRentalInput(){
+ const key=currentRentalMonthKey(), input=document.getElementById('monthlyRentalAmount');
+ if(!input)return;
+ if(input.value.trim()==='')delete db.rentalByMonth[key];
+ else {const value=Number(input.value);if(Number.isFinite(value)&&value>=0)db.rentalByMonth[key]=value;}
+ save();renderRentalCalendar();
+}
+function toggleRentalOffDay(dateKey){
+ db.offDays=Array.isArray(db.offDays)?db.offDays:[];
+ if(db.offDays.includes(dateKey))db.offDays=db.offDays.filter(d=>d!==dateKey);else db.offDays.push(dateKey);
+ save();renderRentalCalendar();
+}
+function renderRentalCalendar(){
+ const grid=document.getElementById('rentalCalendarGrid');if(!grid)return;
+ const monthEl=document.getElementById('rentalCalendarMonth');
+ if(monthEl&&!/^\d{4}-\d{2}$/.test(monthEl.value)){const n=new Date();monthEl.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+ const key=currentRentalMonthKey(),[year,month]=key.split('-').map(Number),days=new Date(year,month,0).getDate(),firstDay=new Date(year,month-1,1).getDay();
+ db.rentalByMonth=db.rentalByMonth&&typeof db.rentalByMonth==='object'?db.rentalByMonth:{};db.offDays=Array.isArray(db.offDays)?db.offDays:[];
+ const amountInput=document.getElementById('monthlyRentalAmount');if(amountInput&&document.activeElement!==amountInput){amountInput.value=Object.prototype.hasOwnProperty.call(db.rentalByMonth,key)?db.rentalByMonth[key]:'';}
+ const off=db.offDays.filter(d=>d.startsWith(key+'-'));const payable=days-off.length;const monthly=Number(db.rentalByMonth[key]||0);const daily=payable>0?monthly/payable:0;
+ const summary=document.getElementById('rentalCalendarSummary');if(summary)summary.innerHTML=`Month: <b>${new Date(year,month-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'})}</b> · Off days: <b>${off.length}</b> · Payable days: <b>${payable}</b><br>Daily rental: <b>${money(daily)}</b> · Monthly rental: <b>${money(monthly)}</b>`;
+ const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];let html=names.map(n=>`<div class="rentalCalendarWeekday">${n}</div>`).join('');
+ for(let i=0;i<firstDay;i++)html+='<div class="rentalDay emptyDay"></div>';
+ for(let day=1;day<=days;day++){
+   const dateKey=`${key}-${String(day).padStart(2,'0')}`,isOff=db.offDays.includes(dateKey);
+   const rateLabel=monthly>0?(isOff?'OFF DAY':payable>0?money(daily):'No payable days'):'Set rent';
+   html+=`<button type="button" class="rentalDay${isOff?' offDay':''}" data-rental-date="${dateKey}" aria-pressed="${isOff?'true':'false'}" onclick="toggleRentalOffDay('${dateKey}')"><span class="dayNum">${day}</span><span class="dayRate">${rateLabel}</span>${isOff?'<span class="offLabel">OFF</span>':''}</button>`;
+ }
+ grid.innerHTML=html;
+}
+
 function renderExpenses(){
+ renderRentalCalendar();
  const el=document.getElementById('expenseList'); if(!el)return;
  const allRows=Array.isArray(db.expenses)?db.expenses.slice():[];
  const yearSel=document.getElementById('expenseYearFilter'), monthSel=document.getElementById('expenseMonthFilter');
