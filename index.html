@@ -844,13 +844,18 @@ function renderRentalCalendar(){
  const key=currentRentalMonthKey(),[year,month]=key.split('-').map(Number),days=new Date(year,month,0).getDate(),firstDay=new Date(year,month-1,1).getDay();
  db.rentalByMonth=db.rentalByMonth&&typeof db.rentalByMonth==='object'?db.rentalByMonth:{};db.offDays=Array.isArray(db.offDays)?db.offDays:[];
  const amountInput=document.getElementById('monthlyRentalAmount');if(amountInput&&document.activeElement!==amountInput){amountInput.value=Object.prototype.hasOwnProperty.call(db.rentalByMonth,key)?db.rentalByMonth[key]:'';}
- const off=db.offDays.filter(d=>d.startsWith(key+'-'));const payable=days-off.length;const monthly=Number(db.rentalByMonth[key]||0);const daily=payable>0?monthly/payable:0;
- const summary=document.getElementById('rentalCalendarSummary');if(summary)summary.innerHTML=`Month: <b>${new Date(year,month-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'})}</b> · Off days: <b>${off.length}</b> · Payable days: <b>${payable}</b><br>Daily rental: <b>${money(daily)}</b> · Monthly rental: <b>${money(monthly)}</b>`;
+ const off=db.offDays.filter(d=>d.startsWith(key+'-'));const payable=days-off.length;const monthly=Number(db.rentalByMonth[key]||0);const monthlyCents=Math.round(monthly*100);const dailyCents=payable>0?Math.round(monthlyCents/payable):0;const daily=dailyCents/100;
+ // Keep the monthly total exact to the cent: all payable days use the rounded daily rate,
+ // and the final payable date receives the remaining cents.
+ let lastPayableDay=0;for(let day=days;day>=1;day--){const dateKey=`${key}-${String(day).padStart(2,'0')}`;if(!db.offDays.includes(dateKey)){lastPayableDay=day;break;}}
+ const finalDayCents=payable>0?monthlyCents-dailyCents*(payable-1):0;
+ const summary=document.getElementById('rentalCalendarSummary');if(summary)summary.innerHTML=`Month: <b>${new Date(year,month-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'})}</b> · Off days: <b>${off.length}</b> · Payable days: <b>${payable}</b><br>Daily rental: <b>${money(daily)}</b>${payable>1&&finalDayCents!==dailyCents?` · Final payable day: <b>${money(finalDayCents/100)}</b>`:''} · Monthly rental: <b>${money(monthly)}</b>`;
  const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];let html=names.map(n=>`<div class="rentalCalendarWeekday">${n}</div>`).join('');
  for(let i=0;i<firstDay;i++)html+='<div class="rentalDay emptyDay"></div>';
  for(let day=1;day<=days;day++){
    const dateKey=`${key}-${String(day).padStart(2,'0')}`,isOff=db.offDays.includes(dateKey);
-   const rateLabel=monthly>0?(isOff?'OFF DAY':payable>0?money(daily):'No payable days'):'Set rent';
+   const dayCents=day===lastPayableDay?finalDayCents:dailyCents;
+   const rateLabel=monthly>0?(isOff?'OFF DAY':payable>0?money(dayCents/100):'No payable days'):'Set rent';
    html+=`<button type="button" class="rentalDay${isOff?' offDay':''}" data-rental-date="${dateKey}" aria-pressed="${isOff?'true':'false'}" onclick="toggleRentalOffDay('${dateKey}')"><span class="dayNum">${day}</span><span class="dayRate">${rateLabel}</span>${isOff?'<span class="offLabel">OFF</span>':''}</button>`;
  }
  grid.innerHTML=html;
