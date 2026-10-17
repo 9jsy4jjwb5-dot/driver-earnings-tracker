@@ -782,9 +782,11 @@ function renderTrips(){
  const rows=Array.isArray(db.trips)?db.trips.slice():[];
  if(!rows.length){el.innerHTML='<div class="empty">No trips recorded yet.</div>';return;}
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.time||'').localeCompare(String(a.time||'')));
- const totalDist=rows.reduce((a,x)=>a+(Number(x.distance)||0),0);
- const totalIncome=rows.reduce((a,x)=>a+(Number(x.price)||0)+(Number(x.waiting)||0)+(Number(x.cancel)||0),0);
- let html=`<div class="small" style="margin-bottom:12px">Trip records: <b>${rows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total Earnings: <b>${money(totalIncome)}</b></div>`;
+ const completedRows=completedTripRecords(rows);
+ const totalDist=completedRows.reduce((a,x)=>a+(Number(x.distance)||0),0);
+ const totalIncome=rows.reduce((a,x)=>a+(Number(x.price)||0)+(Number(x.waiting)||0)+(Number(x.cancel)||0)+(Number(x.tips)||0),0);
+ const totalExcludingCancellation=totalIncome-rows.reduce((a,x)=>a+(Number(x.cancel)||0),0);
+ let html=`<div class="small" style="margin-bottom:12px">Trip records: <b>${completedRows.length}</b> · Total distance: <b>${totalDist.toFixed(1)} km</b> · Total Earnings: <b>${money(totalIncome)}</b> · Earnings excluding cancellation: <b>${money(totalExcludingCancellation)}</b></div>`;
  rows.forEach((x,i)=>{
    const dist=Number(x.distance)||0, price=Number(x.price)||0, erp=Number(x.erp)||0, wait=Number(x.waiting)||0, can=Number(x.cancel)||0;
    const date=x.date?fmtDate(String(x.date)):'';
