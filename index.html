@@ -570,7 +570,7 @@ function openForm(type, editId=null){
    f.innerHTML=`
    <div class="field"><label>Date</label><input id="date" type="date" value="${x.date}"></div>
    <div class="field"><label>Time</label><input id="time" type="time" value="${x.time||''}"></div>
-   <div class="field"><label>Distance travelled (km)</label><input id="distance" type="number" step="0.1" min="0" required value="${x.distance}"></div>
+   <div class="field"><label>Distance travelled (km)</label><input id="distance" type="number" step="0.01" inputmode="decimal" min="0" required value="${x.distance}"></div>
    <div class="field"><label>Trip price ($)</label><input id="price" type="number" step="0.01" min="0" required value="${x.price}"></div>
    <div class="field"><label>ERP charge ($)</label><input id="erp" type="number" step="0.01" min="0" value="${x.erp||0}"></div>
    <div class="field"><label>Waiting fee ($)</label><input id="waiting" type="number" step="0.01" min="0" value="${x.waiting||0}"></div>
@@ -647,7 +647,7 @@ function openForm(type, editId=null){
      const data={date:date.value,amount:+amount.value,description:document.getElementById('description').value};
      if(existing) Object.assign(existing,data); else {db.expenses=db.expenses||[];db.expenses.push({id:crypto.randomUUID(),...data});}
    }
-   save(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':type==='incentive'?'incentive':type==='expense'?'expenses':'more');
+   save(); renderAll(); openPage(type==='trip'?'trips':type==='fuel'?'fuel':type==='incentive'?'incentive':type==='expense'?'expenses':'more');
  };
 }
 
