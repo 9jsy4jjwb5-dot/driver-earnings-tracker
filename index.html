@@ -1,4 +1,4 @@
-<!-- V56 red text for periods with no records; no emoji; based on V55 -->
+<!-- V12 unified date selectors across Trips, Fuel, Incentive, CashCard and Expenses; based on tested V11 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -229,28 +229,28 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 <section id="trips" class="page">
   <div class="section-title">Trips</div>
   <button class="btn" type="button" onclick="openForm('trip')">＋ Add Trip</button>
-  <div class="card" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Find Trips by Month & Year</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="field" style="margin:0"><label for="tripYearFilter">Year</label><select id="tripYearFilter" onchange="renderTrips()"><option value="all">All years</option></select></div><div class="field" style="margin:0"><label for="tripMonthFilter">Month</label><select id="tripMonthFilter" onchange="renderTrips()"><option value="all">All months</option></select></div></div></div>
+  <div class="card periodFilterCard" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Filter Trips</div><div class="field" style="margin:0"><label for="tripPeriodMode">Period</label><select id="tripPeriodMode" onchange="renderPeriodFilter('trip',renderTrips)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div><div id="tripPeriodInput" style="margin-top:10px"></div></div>
   <div id="tripList" class="card" style="margin-top:12px"></div>
 </section>
 
 <section id="fuel" class="page">
   <div class="section-title">Fuel Refills</div>
   <button class="btn" onclick="openForm('fuel')">＋ Add Fuel Refill</button>
-  <div class="card" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Find Fuel Refills by Month & Year</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="field" style="margin:0"><label for="fuelYearFilter">Year</label><select id="fuelYearFilter" onchange="renderFuel()"><option value="all">All years</option></select></div><div class="field" style="margin:0"><label for="fuelMonthFilter">Month</label><select id="fuelMonthFilter" onchange="renderFuel()"><option value="all">All months</option></select></div></div></div>
+  <div class="card periodFilterCard" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Filter Fuel Refills</div><div class="field" style="margin:0"><label for="fuelPeriodMode">Period</label><select id="fuelPeriodMode" onchange="renderPeriodFilter('fuel',renderFuel)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div><div id="fuelPeriodInput" style="margin-top:10px"></div></div>
   <div id="fuelList" class="card" style="margin-top:12px"></div>
 </section>
 
 <section id="incentive" class="page">
   <div class="section-title">Incentive</div>
   <button class="btn" onclick="openForm('incentive')">＋ Add Incentive</button>
-  <div class="card" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Find Incentives by Month & Year</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="field" style="margin:0"><label for="incentiveYearFilter">Year</label><select id="incentiveYearFilter" onchange="renderIncentive()"><option value="all">All years</option></select></div><div class="field" style="margin:0"><label for="incentiveMonthFilter">Month</label><select id="incentiveMonthFilter" onchange="renderIncentive()"><option value="all">All months</option></select></div></div></div>
+  <div class="card periodFilterCard" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Filter Incentives</div><div class="field" style="margin:0"><label for="incentivePeriodMode">Period</label><select id="incentivePeriodMode" onchange="renderPeriodFilter('incentive',renderIncentive)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div><div id="incentivePeriodInput" style="margin-top:10px"></div></div>
   <div id="incentiveList" class="card" style="margin-top:12px"></div>
 </section>
 
 <section id="cashcard" class="page">
   <div class="section-title">CashCard</div>
   <button class="btn" onclick="openForm('cashcard')">＋ CashCard Top-Up</button>
-  <div class="card" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Find CashCard by Month & Year</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="field" style="margin:0"><label for="cashcardYearFilter">Year</label><select id="cashcardYearFilter" onchange="renderCash()"><option value="all">All years</option></select></div><div class="field" style="margin:0"><label for="cashcardMonthFilter">Month</label><select id="cashcardMonthFilter" onchange="renderCash()"><option value="all">All months</option></select></div></div></div>
+  <div class="card periodFilterCard" style="margin-top:12px"><div class="section-title" style="font-size:16px;margin-bottom:10px">Filter CashCard</div><div class="field" style="margin:0"><label for="cashcardPeriodMode">Period</label><select id="cashcardPeriodMode" onchange="renderPeriodFilter('cashcard',renderCash)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div><div id="cashcardPeriodInput" style="margin-top:10px"></div></div>
   <div id="cashList" class="card" style="margin-top:12px"></div>
 </section>
 
@@ -258,12 +258,10 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <div class="section-title">Expenses</div>
   <div class="small" style="margin-bottom:12px">Separate expense records only. No GST or Medisave calculations are applied.</div>
   <button class="btn" type="button" onclick="openForm('expense')">＋ Add Expense</button>
-  <div class="card" style="margin-top:12px">
-    <div class="section-title" style="font-size:16px;margin-bottom:10px">Find Expenses by Month & Year</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="field" style="margin:0"><label for="expenseYearFilter">Year</label><select id="expenseYearFilter" onchange="renderExpenses()"><option value="all">All years</option></select></div>
-      <div class="field" style="margin:0"><label for="expenseMonthFilter">Month</label><select id="expenseMonthFilter" onchange="renderExpenses()"><option value="all">All months</option></select></div>
-    </div>
+  <div class="card periodFilterCard" style="margin-top:12px">
+    <div class="section-title" style="font-size:16px;margin-bottom:10px">Filter Expenses</div>
+    <div class="field" style="margin:0"><label for="expensePeriodMode">Period</label><select id="expensePeriodMode" onchange="renderPeriodFilter('expense',renderExpenses)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div>
+    <div id="expensePeriodInput" style="margin-top:10px"></div>
   </div>
   <div class="card" id="rentalCalendarPanel" style="margin-top:12px">
     <div class="section-title" style="font-size:16px;margin-bottom:10px">Monthly Rental Calendar</div>
@@ -808,27 +806,43 @@ function renderDashboard(){
  document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Total fuel purchased',fuelLit.toFixed(2)+' L'],['Fuel used for efficiency',intervalLitresText],['Distance covered for efficiency',fm.ready?fm.distance.toFixed(2)+' km':'—'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
-function setupYearMonthFilter(prefix, rows){
- const ys=document.getElementById(prefix+'YearFilter'), ms=document.getElementById(prefix+'MonthFilter');
- if(!ys||!ms)return {year:'all',month:'all'};
- const oldY=ys.value||'all', oldM=ms.value||'all';
- const years=[...new Set(rows.map(x=>String(x.date||'').slice(0,4)).filter(y=>/^\\d{4}$/.test(y)))].sort((a,b)=>b.localeCompare(a));
- const cy=String(new Date().getFullYear()); if(!years.includes(cy))years.unshift(cy);
- ys.innerHTML='<option value="all">All years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
- ys.value=years.includes(oldY)?oldY:'all';
- const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
- ms.innerHTML='<option value="all">All months</option>'+months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
- ms.value=/^(0[1-9]|1[0-2])$/.test(oldM)?oldM:'all';
- return {year:ys.value,month:ms.value};
+function renderPeriodFilter(prefix, renderFn){
+ const modeEl=document.getElementById(prefix+'PeriodMode'), inputHost=document.getElementById(prefix+'PeriodInput');
+ if(!modeEl||!inputHost)return;
+ const mode=modeEl.value||'today';
+ const allRows=(prefix==='trip'?db.trips:prefix==='fuel'?db.fuel:prefix==='incentive'?db.incentive:prefix==='cashcard'?db.cashcard:db.expenses)||[];
+ const dates=allRows.map(x=>String(x.date||'')).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d));
+ const todayKey=reportDateKey(new Date());
+ const years=[...new Set([...dates.map(d=>d.slice(0,4)),String(new Date().getFullYear())])].sort((a,b)=>b.localeCompare(a));
+ let control='';
+ if(mode==='day')control=`<div class="field" style="margin:0"><label>Select day</label><input id="${prefix}PeriodValue" type="date" value="${todayKey}" onchange="${prefix}PeriodChanged()" style="width:100%"></div>`;
+ if(mode==='week')control=`<div class="field" style="margin:0"><label>Select week</label><input id="${prefix}PeriodValue" type="week" value="${reportWeekKeyFromDate(todayKey)}" onchange="${prefix}PeriodChanged()" style="width:100%"></div>`;
+ if(mode==='month')control=`<div class="field" style="margin:0"><label>Select month</label><input id="${prefix}PeriodValue" type="month" value="${todayKey.slice(0,7)}" onchange="${prefix}PeriodChanged()" style="width:100%"></div>`;
+ if(mode==='year')control=`<div class="field" style="margin:0"><label>Select year</label><select id="${prefix}PeriodValue" onchange="${prefix}PeriodChanged()">${years.map(y=>`<option value="${y}">${y}</option>`).join('')}</select></div>`;
+ inputHost.innerHTML=control;
+ renderFn();
 }
-function filterRowsByMonthYear(rows,prefix){
- const f=setupYearMonthFilter(prefix,rows);
- return rows.filter(x=>{const d=String(x.date||'');return (f.year==='all'||d.slice(0,4)===f.year)&&(f.month==='all'||d.slice(5,7)===f.month);});
+function periodFilterChanged(prefix, renderFn){renderFn();}
+function tripPeriodChanged(){periodFilterChanged('trip',renderTrips)}
+function fuelPeriodChanged(){periodFilterChanged('fuel',renderFuel)}
+function incentivePeriodChanged(){periodFilterChanged('incentive',renderIncentive)}
+function cashcardPeriodChanged(){periodFilterChanged('cashcard',renderCash)}
+function expensePeriodChanged(){periodFilterChanged('expense',renderExpenses)}
+function filterRowsByPeriod(rows,prefix){
+ const modeEl=document.getElementById(prefix+'PeriodMode'), mode=modeEl?.value||'today';
+ const value=document.getElementById(prefix+'PeriodValue')?.value||'';
+ let start='',end='';
+ if(mode==='today')start=end=reportDateKey(new Date());
+ else if(mode==='day')start=end=value;
+ else if(mode==='week'&&/^\d{4}-W\d{2}$/.test(value)){const w=reportWeekInfo(value);start=w.start;end=w.end;}
+ else if(mode==='month'&&/^\d{4}-\d{2}$/.test(value)){start=value+'-01';const [y,m]=value.split('-').map(Number);end=reportDateKey(new Date(y,m,0));}
+ else if(mode==='year'&&/^\d{4}$/.test(value)){start=value+'-01-01';end=value+'-12-31';}
+ return rows.filter(x=>{const d=String(x.date||'');return start&&end&&d>=start&&d<=end;});
 }
 
 function renderTrips(){
  const el=document.getElementById('tripList'); if(!el)return;
- const allRows=Array.isArray(db.trips)?db.trips.slice():[], rows=filterRowsByMonthYear(allRows,'trip');
+ const allRows=Array.isArray(db.trips)?db.trips.slice():[], rows=filterRowsByPeriod(allRows,'trip');
  if(!rows.length){el.innerHTML='<div class="small">Records: <b>0</b></div><div class="empty">No trips recorded for this selection.</div>';return;}
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.time||'').localeCompare(String(a.time||'')));
  const completedRows=completedTripRecords(rows), totalDist=completedRows.reduce((a,x)=>a+(Number(x.distance)||0),0);
@@ -846,7 +860,7 @@ document.addEventListener('click',function(e){
 });
 function renderFuel(){
  const el=document.getElementById('fuelList');if(!el)return;
- const all=Array.isArray(db.fuel)?db.fuel.slice():[],rows=filterRowsByMonthYear(all,'fuel');
+ const all=Array.isArray(db.fuel)?db.fuel.slice():[],rows=filterRowsByPeriod(all,'fuel');
  if(!rows.length){el.innerHTML='<div class="small">Refills: <b>0</b></div><div class="empty">No fuel refills recorded for this selection.</div>';return;}
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
  let html=`<div class="small">Refills: <b>${rows.length}</b> · Total paid: <b>${money(rows.reduce((a,x)=>a+(Number(x.paid)||0),0))}</b></div>`;
@@ -855,14 +869,14 @@ function renderFuel(){
 }
 function renderCash(){
  const el=document.getElementById('cashList');if(!el)return;
- const all=Array.isArray(db.cashcard)?db.cashcard.slice():[],rows=filterRowsByMonthYear(all,'cashcard');
+ const all=Array.isArray(db.cashcard)?db.cashcard.slice():[],rows=filterRowsByPeriod(all,'cashcard');
  if(!rows.length){el.innerHTML='<div class="small">Top-ups: <b>0</b></div><div class="empty">No CashCard top-ups recorded for this selection.</div>';return;}
  const total=rows.reduce((a,x)=>a+(Number(x.amount)||0),0);
  el.innerHTML=`<div class="small">Top-ups: <b>${rows.length}</b> · Total: <b>${money(total)}</b></div>`+[...rows].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(x=>`<div class="item"><div><b>${fmtDate(x.date)}</b></div><div><b>${money(x.amount)}</b><br><button type="button" class="editBtn" data-type="cashcard" data-id="${x.id}">Edit</button> <button type="button" class="deleteBtn" data-type="cashcard" data-id="${x.id}">Delete</button></div></div>`).join('');
 }
 function renderIncentive(){
  const el=document.getElementById('incentiveList');if(!el)return;
- const all=Array.isArray(db.incentive)?db.incentive.slice():[],rows=filterRowsByMonthYear(all,'incentive');
+ const all=Array.isArray(db.incentive)?db.incentive.slice():[],rows=filterRowsByPeriod(all,'incentive');
  if(!rows.length){el.innerHTML='<div class="small">Records: <b>0</b></div><div class="empty">No incentives recorded for this selection.</div>';return;}
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
  const total=rows.reduce((a,x)=>a+(Number(x.amount)||0),0),after=total*.91;
@@ -915,14 +929,7 @@ function renderExpenses(){
  renderRentalCalendar();
  const el=document.getElementById('expenseList'); if(!el)return;
  const allRows=Array.isArray(db.expenses)?db.expenses.slice():[];
- const yearSel=document.getElementById('expenseYearFilter'), monthSel=document.getElementById('expenseMonthFilter');
- const oldYear=yearSel?yearSel.value:'all', oldMonth=monthSel?monthSel.value:'all';
- const years=[...new Set(allRows.map(x=>String(x.date||'').slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort((a,b)=>b.localeCompare(a));
- const currentYear=String(new Date().getFullYear()); if(!years.includes(currentYear))years.unshift(currentYear);
- if(yearSel){yearSel.innerHTML='<option value="all">All years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');yearSel.value=years.includes(oldYear)?oldYear:'all';}
- if(monthSel){const months=['January','February','March','April','May','June','July','August','September','October','November','December'];monthSel.innerHTML='<option value="all">All months</option>'+months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');monthSel.value=/^(0[1-9]|1[0-2])$/.test(oldMonth)?oldMonth:'all';}
- const selectedYear=yearSel?.value||'all', selectedMonth=monthSel?.value||'all';
- const rows=allRows.filter(x=>{const d=String(x.date||'');return (selectedYear==='all'||d.slice(0,4)===selectedYear)&&(selectedMonth==='all'||d.slice(5,7)===selectedMonth);});
+ const rows=filterRowsByPeriod(allRows,'expense');
  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
  if(!rows.length){el.innerHTML=`<div class="small" style="margin-bottom:12px">Records: <b>0</b> · Total expenses: <b>${money(0)}</b></div><div class="empty">No expenses recorded for this selection.</div>`;return;}
  const total=rows.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
