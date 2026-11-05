@@ -1,4 +1,4 @@
-<!-- V12 unified date selectors across Trips, Fuel, Incentive, CashCard and Expenses; based on tested V11 -->
+<!-- V13 compact uniform date selectors across Trips, Fuel, Incentive, CashCard and Expenses; based on tested V11 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -25,6 +25,30 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 
 .periodBtn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;background:#e8eef7;color:#18365f}
 .periodBtn.active{background:#183f78;color:#fff}
+
+/* V13: uniform compact controls for the five main period filters */
+.periodFilterCard .field select,
+.periodFilterCard .field input{
+  display:block;
+  width:100%;
+  height:48px;
+  min-height:48px;
+  box-sizing:border-box;
+  padding:0 12px;
+  border:1px solid #dbe2eb;
+  border-radius:12px;
+  background:#fff;
+  font-family:inherit;
+  font-size:16px;
+  line-height:normal;
+}
+.periodFilterCard .field input[type="date"],
+.periodFilterCard .field input[type="week"],
+.periodFilterCard .field input[type="month"]{
+  -webkit-appearance:none;
+  appearance:none;
+  text-align:left;
+}
 
 /* Reports accordions V39 */
 .reportAccordionV39{margin-top:14px;border:1px solid #d9dde3;border-radius:15px;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.04)}
