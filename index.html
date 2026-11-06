@@ -1,12 +1,12 @@
-<!-- V14 centered uniform date selectors across Trips, Fuel, Incentive, CashCard and Expenses; based on tested V11 -->
+<!-- V15 centered custom display over native pickers across Trips, Fuel, Incentive, CashCard and Expenses; based on tested V11 -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V10</title>
-<meta name="app-version" content="10">
+<title>Driver Earnings Tracker V15</title>
+<meta name="app-version" content="15">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -65,28 +65,12 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 .reportAccordionBodyV39 .value{font-size:18px!important;line-height:1.2;margin-top:5px}
 .fuelMonthSelectV39{margin-top:2px;margin-bottom:12px}
 
-/* V14: center the selected value inside every period filter control, including iOS native date fields */
-.periodFilterCard .field select{
-  text-align:center;
-  text-align-last:center;
-}
-.periodFilterCard .field input[type="date"],
-.periodFilterCard .field input[type="week"],
-.periodFilterCard .field input[type="month"]{
-  text-align:center !important;
-}
-.periodFilterCard .field input[type="date"]::-webkit-date-and-time-value,
-.periodFilterCard .field input[type="week"]::-webkit-date-and-time-value,
-.periodFilterCard .field input[type="month"]::-webkit-date-and-time-value{
-  text-align:center;
-  margin:0 auto;
-  width:100%;
-}
-.periodFilterCard .field input[type="date"]::-webkit-datetime-edit,
-.periodFilterCard .field input[type="week"]::-webkit-datetime-edit,
-.periodFilterCard .field input[type="month"]::-webkit-datetime-edit{
-  text-align:center;
-}
+/* V15: centered visual layer over native iPhone date/week/month pickers */
+.periodFilterCard .field select{ text-align:center; text-align-last:center; }
+.periodPickerShell{position:relative;width:100%;height:48px;min-height:48px;border:1px solid #dbe2eb;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.periodPickerDisplay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 42px;font:16px -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;color:#111827;pointer-events:none;white-space:nowrap}
+.periodPickerShell input{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:12px!important;z-index:2!important;cursor:pointer}
+.periodPickerShell:after{content:"";position:absolute;right:15px;top:50%;width:8px;height:8px;border-right:2px solid #111827;border-bottom:2px solid #111827;transform:translateY(-70%) rotate(45deg);pointer-events:none}
 
 </style>
 <style id="monthlyDashboardCompactV32">
@@ -854,6 +838,19 @@ function renderDashboard(){
  document.getElementById('performance').innerHTML=[['Avg trip distance',trips?(dist/trips).toFixed(2)+' km':'0.00 km'],['Avg price/trip',money(avgTrip)],['Avg income/km',money(avgKm)],['Fuel efficiency',fuelEffText],['Fuel cost/km',fuelCostKmText],['Total fuel purchased',fuelLit.toFixed(2)+' L'],['Fuel used for efficiency',intervalLitresText],['Distance covered for efficiency',fm.ready?fm.distance.toFixed(2)+' km':'—'],['Avg fuel price',money(avgFuelPrice)+'/L']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
 }
 
+function periodPickerDisplayText(mode,value){
+ if(!value)return '';
+ if(mode==='day'){const p=value.split('-');return p.length===3?`${Number(p[2])} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(p[1])-1]} ${p[0]}`:value;}
+ if(mode==='month'){const p=value.split('-');return p.length===2?new Date(Number(p[0]),Number(p[1])-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'}):value;}
+ if(mode==='week'){const p=value.split('-W');return p.length===2?`Week ${Number(p[1])}, ${p[0]}`:value;}
+ return value;
+}
+function updatePeriodPickerDisplay(prefix){
+ const mode=document.getElementById(prefix+'PeriodMode')?.value||'today';
+ const input=document.getElementById(prefix+'PeriodValue');
+ const display=document.getElementById(prefix+'PeriodDisplay');
+ if(input&&display)display.textContent=periodPickerDisplayText(mode,input.value);
+}
 function renderPeriodFilter(prefix, renderFn){
  const modeEl=document.getElementById(prefix+'PeriodMode'), inputHost=document.getElementById(prefix+'PeriodInput');
  if(!modeEl||!inputHost)return;
@@ -863,9 +860,12 @@ function renderPeriodFilter(prefix, renderFn){
  const todayKey=reportDateKey(new Date());
  const years=[...new Set([...dates.map(d=>d.slice(0,4)),String(new Date().getFullYear())])].sort((a,b)=>b.localeCompare(a));
  let control='';
- if(mode==='day')control=`<div class="field" style="margin:0"><label>Select day</label><input id="${prefix}PeriodValue" type="date" value="${todayKey}" onchange="${prefix}PeriodChanged()" style="width:100%"></div>`;
- if(mode==='week')control=`<div class="field" style="margin:0"><label>Select week</label><input id="${prefix}PeriodValue" type="week" value="${reportWeekKeyFromDate(todayKey)}" onchange="${prefix}PeriodChanged()" style="width:100%"></div>`;
- if(mode==='month')control=`<div class="field" style="margin:0"><label>Select month</label><input id="${prefix}PeriodValue" type="month" value="${todayKey.slice(0,7)}" onchange="${prefix}PeriodChanged()" style="width:100%"></div>`;
+ if(mode==='day'||mode==='week'||mode==='month'){
+  const type=mode==='day'?'date':mode;
+  const value=mode==='day'?todayKey:mode==='week'?reportWeekKeyFromDate(todayKey):todayKey.slice(0,7);
+  const label=mode==='day'?'Select day':mode==='week'?'Select week':'Select month';
+  control=`<div class="field" style="margin:0"><label>${label}</label><div class="periodPickerShell"><span class="periodPickerDisplay" id="${prefix}PeriodDisplay">${periodPickerDisplayText(mode,value)}</span><input id="${prefix}PeriodValue" type="${type}" value="${value}" aria-label="${label}" onchange="updatePeriodPickerDisplay('${prefix}');${prefix}PeriodChanged()" oninput="updatePeriodPickerDisplay('${prefix}')"></div></div>`;
+ }
  if(mode==='year')control=`<div class="field" style="margin:0"><label>Select year</label><select id="${prefix}PeriodValue" onchange="${prefix}PeriodChanged()">${years.map(y=>`<option value="${y}">${y}</option>`).join('')}</select></div>`;
  inputHost.innerHTML=control;
  renderFn();
