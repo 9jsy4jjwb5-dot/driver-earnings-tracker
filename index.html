@@ -1,12 +1,12 @@
-<!-- V19: Expense date calendar highlights saved expense dates; weeks start Monday -->
+<!-- V21: Render expense calendar on open to prevent blank panel -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V20</title>
-<meta name="app-version" content="19">
+<title>Driver Earnings Tracker V21</title>
+<meta name="app-version" content="21">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -897,7 +897,20 @@ function renderPeriodFilter(prefix, renderFn){
 function expenseCalendarDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 function toggleExpenseCalendar(){
  const panel=document.getElementById('expenseCalendarPanel');if(!panel)return;
- panel.classList.toggle('open');
+ const willOpen=!panel.classList.contains('open');
+ if(willOpen){
+  const mode=document.getElementById('expensePeriodMode')?.value||'day';
+  const value=document.getElementById('expensePeriodValue')?.value||'';
+  try{renderExpenseDateCalendar(mode,value,false);}catch(err){
+   console.error('Expense calendar render failed:',err);
+   panel.innerHTML='<div style="padding:12px;color:#b42318;font-size:13px">Calendar could not load. Please close and reopen this filter.</div>';
+  }
+  panel.classList.add('open');
+  panel.style.display='block';
+ }else{
+  panel.classList.remove('open');
+  panel.style.display='none';
+ }
 }
 function moveExpenseCalendarMonth(delta){
  const d=window.expenseCalendarCursor||new Date();
