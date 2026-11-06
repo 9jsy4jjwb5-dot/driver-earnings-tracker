@@ -1,11 +1,11 @@
-<!-- V21: Render expense calendar on open to prevent blank panel -->
+<!-- V22: Render expense calendar on open to prevent blank panel -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V21</title>
+<title>Driver Earnings Tracker V22</title>
 <meta name="app-version" content="21">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -1100,10 +1100,18 @@ function reportWeekInfo(key){
  return {start:reportDateKey(monday),end:reportDateKey(sunday),label:`${monday.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'})} – ${sunday.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'})}`};
 }
 function reportWeekKeyFromDate(dateStr){
+ // ISO-8601 week: Monday is day 1; week 1 contains 4 January.
+ // Anchor to the Monday of the week containing the selected date, then
+ // measure from the Monday of ISO week 1. This avoids the one-week shift
+ // when 4 January falls on a Sunday (as it does in 2026).
  const d=new Date(dateStr+'T12:00:00');
- const day=d.getDay()||7; const th=new Date(d); th.setDate(d.getDate()+4-day);
- const y=th.getFullYear(); const jan4=new Date(y,0,4); const janDay=jan4.getDay()||7;
- const week=1+Math.round(((th-jan4)/86400000-(janDay-1))/7);
+ const day=d.getDay()||7;
+ const monday=new Date(d); monday.setDate(d.getDate()-day+1);
+ const y=monday.getFullYear();
+ const jan4=new Date(y,0,4,12);
+ const jan4Day=jan4.getDay()||7;
+ const week1Monday=new Date(jan4); week1Monday.setDate(jan4.getDate()-jan4Day+1);
+ const week=1+Math.floor((monday-week1Monday)/604800000);
  return `${y}-W${String(week).padStart(2,'0')}`;
 }
 function reportAvailableDates(){
