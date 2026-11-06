@@ -1,12 +1,12 @@
-<!-- V16: Expenses records above rental calendar; compact centered rental month picker -->
+<!-- V19: Expense date calendar highlights saved expense dates; weeks start Monday -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V16</title>
-<meta name="app-version" content="16">
+<title>Driver Earnings Tracker V19</title>
+<meta name="app-version" content="19">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -71,23 +71,24 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
 .periodPickerDisplay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 42px;font:16px -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;color:#111827;pointer-events:none;white-space:nowrap}
 .periodPickerShell input{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:12px!important;z-index:2!important;cursor:pointer}
 .periodPickerShell:after{content:"";position:absolute;right:15px;top:50%;width:8px;height:8px;border-right:2px solid #111827;border-bottom:2px solid #111827;transform:translateY(-70%) rotate(45deg);pointer-events:none}
-.expenseCalendarWrap{position:relative;margin-top:8px}
-.expenseCalendarToggle{width:100%;height:48px;border:1px solid #dbe2eb;border-radius:12px;background:#fff;color:#111827;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;padding:0 42px;position:relative}
-.expenseCalendarToggle:after{content:"";position:absolute;right:15px;top:19px;width:8px;height:8px;border-right:2px solid #111827;border-bottom:2px solid #111827;transform:rotate(45deg)}
-.expenseCalendarPanel{display:none;margin-top:8px;padding:12px;border:1px solid #dbe2eb;border-radius:14px;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,.10)}
+.expenseCalendarWrap{position:relative;width:100%;margin-top:4px}
+.expenseCalendarToggle{width:100%;height:48px;min-height:48px;border:1px solid #dbe2eb;border-radius:12px;background:#fff;color:#111827;font:16px -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;padding:0 14px;display:flex;align-items:center;justify-content:space-between}
+.expenseCalendarToggle span:first-child{flex:1;text-align:center;padding-left:18px}
+.expenseCalendarToggle span:last-child{color:#475569;font-size:15px}
+.expenseCalendarPanel{display:none;position:absolute;z-index:20;left:0;right:0;top:calc(100% + 6px);margin:0;padding:12px;border:1px solid #dbe2eb;border-radius:14px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.13)}
 .expenseCalendarPanel.open{display:block}
-.expenseCalendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-weight:700}
-.expenseCalendarHead button{border:0;border-radius:8px;background:#f1f5f9;padding:7px 12px;font-size:18px}
-.expenseCalendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center}
-.expenseCalendarDow{font-size:11px;color:#64748b;padding:4px 0}
-.expenseCalendarDay{height:38px;border:0;border-radius:10px;background:#f8fafc;color:#111827;font-size:14px;position:relative}
+.expenseCalendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#14233b;font-weight:750}
+.expenseCalendarHead button{width:34px;height:34px;border:0;border-radius:9px;background:#e8f0fb;color:#123B72;font-size:22px;line-height:1}
+.expenseCalendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.expenseCalendarDow{font-size:11px;font-weight:700;color:#718096;padding:5px 0}
+.expenseCalendarBlank{height:36px}
+.expenseCalendarDay{height:36px;min-width:0;border:0;border-radius:9px;background:#f4f7fb;color:#14233b;font-size:14px;position:relative;padding:0}
 .expenseCalendarDay.hasExpense{background:#d9f3e8;color:#075b3b;font-weight:800;box-shadow:inset 0 0 0 1.5px #159765}
-.expenseCalendarDay.hasExpense:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:#07834f;bottom:4px;left:calc(50% - 2.5px)}
-.expenseCalendarDay.selected{outline:2px solid #173f35;outline-offset:-2px;font-weight:800}
-.expenseCalendarDay.hasExpense.selected{background:#d9f3e8;color:#075b3b}
-.expenseCalendarDay.selected:after{background:#07834f}
-.expenseCalendarDay:disabled{visibility:hidden}
-.expenseCalendarLegend{font-size:11px;color:#64748b;margin-top:9px}
+.expenseCalendarDay.hasExpense:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:#07834f;bottom:3px;left:calc(50% - 2.5px)}
+.expenseCalendarDay.selected{outline:2px solid #123B72;outline-offset:-2px;font-weight:800}
+.expenseCalendarDay.selectedWeek:not(.hasExpense){background:#e8f0fb}
+.expenseCalendarLegend{font-size:11px;color:#64748b;margin-top:9px;display:flex;align-items:center;gap:7px}
+.expenseLegendDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#159765}
 
 </style>
 <style id="monthlyDashboardCompactV32">
@@ -309,7 +310,7 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
   <button class="btn" type="button" onclick="openForm('expense')">＋ Add Expense</button>
   <div class="card periodFilterCard" style="margin-top:12px">
     <div class="section-title" style="font-size:16px;margin-bottom:10px">Filter Expenses</div>
-    <div class="field" style="margin:0"><label for="expensePeriodMode">Period</label><select id="expensePeriodMode" onchange="expenseCalendarViewMonth='';renderPeriodFilter('expense',renderExpenses)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div>
+    <div class="field" style="margin:0"><label for="expensePeriodMode">Period</label><select id="expensePeriodMode" onchange="renderPeriodFilter('expense',renderExpenses)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div>
     <div id="expensePeriodInput" style="margin-top:10px"></div>
   </div>
   <div id="expenseList" class="card" style="margin-top:12px"></div>
@@ -882,45 +883,64 @@ function renderPeriodFilter(prefix, renderFn){
   const value=mode==='day'?todayKey:mode==='week'?reportWeekKeyFromDate(todayKey):todayKey.slice(0,7);
   const label=mode==='day'?'Select day':mode==='week'?'Select week':'Select month';
   if(prefix==='expense'){
-   control=`<div class="field" style="margin:0"><label>${label}</label><input id="expensePeriodValue" type="hidden" value="${value}"><div class="expenseCalendarWrap"><button type="button" class="expenseCalendarToggle" id="expenseCalendarToggle" onclick="toggleExpenseCalendar()">${periodPickerDisplayText(mode,value)}</button><div class="expenseCalendarPanel" id="expenseCalendarPanel"></div></div></div>`;
+   control=`<div class="field" style="margin:0"><label>${label}</label><div class="expenseCalendarWrap"><button type="button" class="expenseCalendarToggle" id="expenseCalendarToggle" onclick="toggleExpenseCalendar()"><span id="expensePeriodDisplay">${periodPickerDisplayText(mode,value)}</span><span aria-hidden="true">▾</span></button><div class="expenseCalendarPanel" id="expenseCalendarPanel"></div><input id="expensePeriodValue" type="hidden" value="${value}"></div></div>`;
   }else{
    control=`<div class="field" style="margin:0"><label>${label}</label><div class="periodPickerShell"><span class="periodPickerDisplay" id="${prefix}PeriodDisplay">${periodPickerDisplayText(mode,value)}</span><input id="${prefix}PeriodValue" type="${type}" value="${value}" aria-label="${label}" onchange="updatePeriodPickerDisplay('${prefix}');${prefix}PeriodChanged()" oninput="updatePeriodPickerDisplay('${prefix}')"></div></div>`;
   }
  }
  if(mode==='year')control=`<div class="field" style="margin:0"><label>Select year</label><select id="${prefix}PeriodValue" onchange="${prefix}PeriodChanged()">${years.map(y=>`<option value="${y}">${y}</option>`).join('')}</select></div>`;
  inputHost.innerHTML=control;
- if(prefix==='expense'&&(mode==='day'||mode==='week'||mode==='month'))renderExpenseCalendar();
+ if(prefix==='expense'&&(mode==='day'||mode==='week'||mode==='month'))renderExpenseDateCalendar(mode,value,true);
  renderFn();
 }
 
-let expenseCalendarViewMonth='';
-function toggleExpenseCalendar(){const p=document.getElementById('expenseCalendarPanel');if(!p)return;p.classList.toggle('open');if(p.classList.contains('open'))renderExpenseCalendar();}
-function shiftExpenseCalendarMonth(delta){const p=document.getElementById('expenseCalendarPanel');const base=expenseCalendarViewMonth||reportMonthKey(new Date());const [y,m]=base.split('-').map(Number);const d=new Date(y,m-1+delta,1);expenseCalendarViewMonth=reportMonthKey(d);renderExpenseCalendar();}
+function expenseCalendarDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function toggleExpenseCalendar(){
+ const panel=document.getElementById('expenseCalendarPanel');if(!panel)return;
+ panel.classList.toggle('open');
+}
+function moveExpenseCalendarMonth(delta){
+ const d=window.expenseCalendarCursor||new Date();
+ window.expenseCalendarCursor=new Date(d.getFullYear(),d.getMonth()+delta,1,12);
+ const mode=document.getElementById('expensePeriodMode')?.value||'day';
+ renderExpenseDateCalendar(mode,document.getElementById('expensePeriodValue')?.value||'',false);
+}
 function selectExpenseCalendarDate(dateKey){
- const mode=document.getElementById('expensePeriodMode')?.value||'day';const input=document.getElementById('expensePeriodValue');const toggle=document.getElementById('expenseCalendarToggle');if(!input||!toggle)return;
- input.value=mode==='week'?reportWeekKeyFromDate(dateKey):mode==='month'?dateKey.slice(0,7):dateKey;
- toggle.textContent=periodPickerDisplayText(mode,input.value);
+ const mode=document.getElementById('expensePeriodMode')?.value||'day';
+ const input=document.getElementById('expensePeriodValue');if(!input)return;
+ if(mode==='day')input.value=dateKey;
+ else if(mode==='week')input.value=reportWeekKeyFromDate(dateKey);
+ else if(mode==='month')input.value=dateKey.slice(0,7);
+ const display=document.getElementById('expensePeriodDisplay');if(display)display.textContent=periodPickerDisplayText(mode,input.value);
  const panel=document.getElementById('expenseCalendarPanel');if(panel)panel.classList.remove('open');
+ const [y,m]=dateKey.split('-').map(Number);window.expenseCalendarCursor=new Date(y,m-1,1,12);
+ renderExpenseDateCalendar(mode,input.value,false);
  expensePeriodChanged();
 }
-function renderExpenseCalendar(){
+function renderExpenseDateCalendar(mode,value,resetCursor){
  const panel=document.getElementById('expenseCalendarPanel');if(!panel)return;
- const mode=document.getElementById('expensePeriodMode')?.value||'day';const input=document.getElementById('expensePeriodValue');
- const current=input?.value||reportDateKey(new Date());
- let selectedDate=mode==='month'?current+'-01':mode==='week'?(()=>{const w=reportWeekInfo(current);return w.start;})():current;
- if(!expenseCalendarViewMonth)expenseCalendarViewMonth=selectedDate.slice(0,7);
- const [year,month]=expenseCalendarViewMonth.split('-').map(Number);const first=new Date(year,month-1,1);const offset=first.getDay();const days=new Date(year,month,0).getDate();
+ let anchor;
+ if(mode==='week'&&/^\d{4}-W\d{2}$/.test(value))anchor=reportWeekInfo(value).start;
+ else if(mode==='month'&&/^\d{4}-\d{2}$/.test(value))anchor=value+'-01';
+ else if(mode==='day'&&/^\d{4}-\d{2}-\d{2}$/.test(value))anchor=value;
+ else anchor=reportDateKey(new Date());
+ if(resetCursor||!window.expenseCalendarCursor){const [y,m]=anchor.split('-').map(Number);window.expenseCalendarCursor=new Date(y,m-1,1,12);}
+ const cursor=window.expenseCalendarCursor,year=cursor.getFullYear(),month=cursor.getMonth();
+ const firstOffset=(new Date(year,month,1).getDay()+6)%7;
+ const days=new Date(year,month+1,0).getDate();
+ let selectedDate=mode==='week'&&/^\d{4}-W\d{2}$/.test(value)?reportWeekInfo(value).start:(mode==='month'?value+'-01':value);
+ const selectedWeek=mode==='week'&&/^\d{4}-W\d{2}$/.test(value)?reportWeekInfo(value):null;
  const expenseDates=new Set((db.expenses||[]).map(x=>String(x.date||'')).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)));
- let html=`<div class="expenseCalendarHead"><button type="button" aria-label="Previous month" onclick="shiftExpenseCalendarMonth(-1)">‹</button><span>${first.toLocaleDateString('en-SG',{month:'long',year:'numeric'})}</span><button type="button" aria-label="Next month" onclick="shiftExpenseCalendarMonth(1)">›</button></div><div class="expenseCalendarGrid">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="expenseCalendarDow">${x}</div>`).join('')}`;
- for(let i=0;i<offset;i++)html+='<button class="expenseCalendarDay" disabled></button>';
+ const monthName=cursor.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+ const weekdays=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+ let html=`<div class="expenseCalendarHead"><button type="button" aria-label="Previous month" onclick="moveExpenseCalendarMonth(-1)">‹</button><strong>${monthName}</strong><button type="button" aria-label="Next month" onclick="moveExpenseCalendarMonth(1)">›</button></div><div class="expenseCalendarGrid">${weekdays.map(n=>`<div class="expenseCalendarDow">${n}</div>`).join('')}`;
+ for(let i=0;i<firstOffset;i++)html+='<span class="expenseCalendarBlank"></span>';
  for(let day=1;day<=days;day++){
-  const key=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;const has=expenseDates.has(key);let selected=false;
-  if(mode==='day')selected=key===current;
-  else if(mode==='month')selected=false;
-  else {const wk=reportWeekInfo(current);selected=key>=wk.start&&key<=wk.end;}
-  html+=`<button type="button" class="expenseCalendarDay${has?' hasExpense':''}${selected?' selected':''}" onclick="selectExpenseCalendarDate('${key}')" aria-label="${key}${has?', has expenses':''}">${day}</button>`;
+  const key=expenseCalendarDateKey(year,month,day),has=expenseDates.has(key),inSelectedWeek=selectedWeek&&key>=selectedWeek.start&&key<=selectedWeek.end;
+  const selected=mode==='day'?key===selectedDate:(mode==='week'?!!inSelectedWeek:false);
+  html+=`<button type="button" class="expenseCalendarDay${has?' hasExpense':''}${selected?' selected':''}${inSelectedWeek?' selectedWeek':''}" onclick="selectExpenseCalendarDate('${key}')" aria-label="${key}${has?', has expenses':''}">${day}</button>`;
  }
- html+='</div><div class="expenseCalendarLegend">Green dates indicate recorded expenses. Tap a date to select the day, week or month.</div>';
+ html+='</div><div class="expenseCalendarLegend"><span class="expenseLegendDot"></span> Dates with expenses</div>';
  panel.innerHTML=html;
 }
 
@@ -1038,6 +1058,8 @@ function renderRentalCalendar(){
 
 function renderExpenses(){
  renderRentalCalendar();
+ const expenseMode=document.getElementById('expensePeriodMode')?.value||'today';
+ if(['day','week','month'].includes(expenseMode)){const expenseValue=document.getElementById('expensePeriodValue')?.value||'';renderExpenseDateCalendar(expenseMode,expenseValue,false);}
  const el=document.getElementById('expenseList'); if(!el)return;
  const allRows=Array.isArray(db.expenses)?db.expenses.slice():[];
  const rows=filterRowsByPeriod(allRows,'expense');
