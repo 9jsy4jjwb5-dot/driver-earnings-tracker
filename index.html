@@ -1,12 +1,12 @@
-<!-- V15 centered custom display over native pickers across Trips, Fuel, Incentive, CashCard and Expenses; based on tested V11 -->
+<!-- V16: Expenses records above rental calendar; compact centered rental month picker -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123B72">
-<title>Driver Earnings Tracker V15</title>
-<meta name="app-version" content="15">
+<title>Driver Earnings Tracker V16</title>
+<meta name="app-version" content="16">
 <link rel="manifest" href="manifest.json">
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:#f4f7fb;color:#14233b}
@@ -295,16 +295,16 @@ select{width:100%;padding:13px;border:1px solid #dbe2eb;border-radius:12px;font-
     <div class="field" style="margin:0"><label for="expensePeriodMode">Period</label><select id="expensePeriodMode" onchange="renderPeriodFilter('expense',renderExpenses)"><option value="today">Today</option><option value="day">Select day</option><option value="week">Select week</option><option value="month">Select month</option><option value="year">Select year</option></select></div>
     <div id="expensePeriodInput" style="margin-top:10px"></div>
   </div>
+  <div id="expenseList" class="card" style="margin-top:12px"></div>
   <div class="card" id="rentalCalendarPanel" style="margin-top:12px">
     <div class="section-title" style="font-size:16px;margin-bottom:10px">Monthly Rental Calendar</div>
-    <div class="field"><label for="rentalCalendarMonth">Calendar month</label><input id="rentalCalendarMonth" type="month" onchange="renderRentalCalendar()"></div>
+    <div class="field"><label for="rentalCalendarMonth">Calendar month</label><div class="periodPickerShell"><span class="periodPickerDisplay" id="rentalCalendarMonthDisplay"></span><input id="rentalCalendarMonth" type="month" aria-label="Calendar month" onchange="updateRentalMonthDisplay();renderRentalCalendar()" oninput="updateRentalMonthDisplay()"></div></div>
     <div class="field" style="margin-top:10px"><label for="monthlyRentalAmount">Monthly rental ($)</label><input id="monthlyRentalAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter monthly rental" oninput="saveMonthlyRentalInput()"></div>
     <div id="rentalCalendarSummary" class="small" style="margin:10px 0 12px"></div>
     <div class="small" style="margin-bottom:8px">Tap a calendar day to mark or unmark it as an off day. Rental is divided equally across the remaining payable days.</div>
     <div class="rentalCalendarGrid" id="rentalCalendarGrid"></div>
     <div class="small" style="margin-top:10px">Off days are saved separately from expenses. The monthly rental stays fixed; marking an off day recalculates the daily amount for all remaining payable days.</div>
   </div>
-  <div id="expenseList" class="card" style="margin-top:12px"></div>
 </section>
 
 <section id="reports" class="page">
@@ -932,6 +932,14 @@ function renderIncentive(){
  rows.forEach((x,i)=>{const amount=Number(x.amount)||0,id=String(x.id??('incentive-'+i));html+=`<div class="item"><div><b>${fmtDate(String(x.date||''))}</b></div><div style="text-align:right"><b>${money(amount)}</b><br><span class="small">After 9%: ${money(amount*.91)}</span><br><button type="button" class="editBtn" data-type="incentive" data-id="${id}">Edit</button> <button type="button" class="deleteBtn" data-type="incentive" data-id="${id}">Delete</button></div></div>`;});
  el.innerHTML=html;
 }
+function updateRentalMonthDisplay(){
+ const el=document.getElementById('rentalCalendarMonth');
+ const display=document.getElementById('rentalCalendarMonthDisplay');
+ if(el&&display&&/^\d{4}-\d{2}$/.test(el.value)){
+  const [y,m]=el.value.split('-').map(Number);
+  display.textContent=new Date(y,m-1,1).toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+ }
+}
 function currentRentalMonthKey(){
  const el=document.getElementById('rentalCalendarMonth');
  if(el&&/^\d{4}-\d{2}$/.test(el.value))return el.value;
@@ -953,6 +961,7 @@ function renderRentalCalendar(){
  const grid=document.getElementById('rentalCalendarGrid');if(!grid)return;
  const monthEl=document.getElementById('rentalCalendarMonth');
  if(monthEl&&!/^\d{4}-\d{2}$/.test(monthEl.value)){const n=new Date();monthEl.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+ updateRentalMonthDisplay();
  const key=currentRentalMonthKey(),[year,month]=key.split('-').map(Number),days=new Date(year,month,0).getDate(),firstDay=new Date(year,month-1,1).getDay();
  db.rentalByMonth=db.rentalByMonth&&typeof db.rentalByMonth==='object'?db.rentalByMonth:{};db.offDays=Array.isArray(db.offDays)?db.offDays:[];
  const amountInput=document.getElementById('monthlyRentalAmount');if(amountInput&&document.activeElement!==amountInput){amountInput.value=Object.prototype.hasOwnProperty.call(db.rentalByMonth,key)?db.rentalByMonth[key]:'';}
